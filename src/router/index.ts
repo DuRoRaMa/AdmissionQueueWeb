@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,15 +6,58 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: () => import('../views/HomeView.vue'),
+      meta: {
+        auth: undefined
+      }
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue')
+      path: '/tablo',
+      name: 'tablo',
+      component: () => import('../views/TabloView.vue'),
+      meta: {
+        auth: undefined
+      }
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+      meta: {
+        auth: false
+      }
+    },
+    {
+      path: '/account/profile',
+      name: 'profile',
+      component: () => import('../views/Account/ProfileView.vue'),
+      meta: {
+        auth: true
+      }
+    },
+    {
+      path: '/queue/operator/settings',
+      name: 'operator_settings',
+      component: () => import('../views/OperatorSettingsView.vue'),
+      meta: {
+        auth: true
+      }
+    },
+    {
+      path: '/queue/operator',
+      name: 'operator',
+      component: () => import('../views/OperatorView.vue'),
+      meta: {
+        auth: true
+      }
+    },
+    {
+      path: '/queue/registrator',
+      name: 'registrator',
+      component: () => import('../views/RegistatorView.vue'),
+      meta: {
+        auth: true
+      }
     }
   ]
 })
