@@ -2,7 +2,7 @@ import axios, { AxiosError, type AxiosResponse } from 'axios'
 import { NotificationProgrammatic } from '@ntohq/buefy-next'
 
 const APIAxios = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/v1'
+  baseURL: import.meta.env.VITE_API_URL
 })
 APIAxios.interceptors.response.use(
   (response: AxiosResponse) => {

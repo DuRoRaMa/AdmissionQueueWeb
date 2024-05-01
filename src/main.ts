@@ -1,6 +1,6 @@
 import './assets/main.css'
+import 'bulma/css/bulma.css'
 import '@ntohq/buefy-next/dist/buefy.css'
-
 import { createApp } from 'vue/dist/vue.esm-bundler'
 import { createPinia } from 'pinia'
 import App from './App.vue'

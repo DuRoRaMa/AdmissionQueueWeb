@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@ntohq/buefy-next": "^0.1.2",
+    "@vueuse/core": "^10.9.0",
     "axios": "^1.6.8",
+    "bulma": "^1.0.0",
     "lodash": "^4.17.21",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
