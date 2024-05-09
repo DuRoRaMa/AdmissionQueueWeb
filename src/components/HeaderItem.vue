@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuth } from 'vue-auth3'
+import fefu_logo from '@/assets/FEFU_logo.svg'
 
 const auth = useAuth()
 </script>
@@ -7,10 +8,7 @@ const auth = useAuth()
   <b-navbar v-show="$route.name !== 'tablo'">
     <template #brand>
       <b-navbar-item tag="router-link" :to="{ path: '/' }">
-        <b-image
-          src="/src/assets/dvfu-logo.png"
-          alt="Электронная очередь приемной комиссии ДВФУ"
-        ></b-image>
+        <b-image :src="fefu_logo" alt="ЭО ПК ДВФУ" />
       </b-navbar-item>
     </template>
     <template #start>
