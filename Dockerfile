@@ -1,8 +1,12 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
+FROM node as development
+WORKDIR /usr/src/app
+COPY package*.json .
 RUN npm install
 COPY . .
-EXPOSE 4173
 RUN npm run build-only
-CMD [ "npm", "run", "preview" ]
+
+FROM nginx:stable-alpine as production
+COPY --from=development /usr/src/app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+CMD ["nginx", "-g", "daemon off;"]
+
