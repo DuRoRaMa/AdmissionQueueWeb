@@ -18,7 +18,7 @@ function registerTalon() {
   console.log(currentPurpose.value, currentComment.value)
   loadingRegister.value = true
   postAPIData(
-    '/queue/taloаааааn',
+    '/queue/talon/',
     { purpose: currentPurpose.value, comment: currentComment.value },
     auth,
     (response) => {
