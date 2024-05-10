@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useAuth } from 'vue-auth3'
 import { NotificationProgrammatic } from '@ntohq/buefy-next'
 import type { AxiosError } from 'axios'
@@ -9,8 +9,10 @@ interface User {
   username: string
 }
 let props = reactive({ username: '', password: '' })
+let loadingLogin = ref(false)
 const auth = useAuth()
 function login() {
+  loadingLogin.value = true
   auth
     .login({
       data: props
@@ -21,6 +23,7 @@ function login() {
       }
     })
     .then(() => {
+      loadingLogin.value = false
       auth.fetch().then(() => {
         new NotificationProgrammatic().open({
           message: `Добро пожаловать, ${auth.user<User>()?.username}`,
@@ -63,7 +66,7 @@ function login() {
             </b-field>
           </section>
           <footer class="container">
-            <b-button @click="login" label="Войти" type="is-primary" />
+            <b-button @click="login" :loading="loadingLogin" label="Войти" type="is-primary" />
           </footer>
         </div>
       </form>
