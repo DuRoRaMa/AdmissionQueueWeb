@@ -2,9 +2,15 @@ import type { AxiosResponse } from 'axios'
 import APIAxios from './instance'
 import type { Auth } from 'vue-auth3'
 
-export function getAPIData(url: string, auth: Auth, func: (r: AxiosResponse) => void) {
+export function getAPIData(
+  url: string,
+  auth: Auth,
+  func: (r: AxiosResponse) => void,
+  params: any = {}
+) {
   APIAxios.get(url, {
-    headers: { Authorization: 'Bearer ' + auth.token() }
+    headers: { Authorization: 'Bearer ' + auth.token() },
+    params: params
   })
     .then(func)
     .catch((err) => {
@@ -30,9 +36,16 @@ export function patchAPIData(url: string, data: any, auth: Auth, func: (r: Axios
       console.error(err)
     })
 }
-export function postAPIData(url: string, data: any, auth: Auth, func: (r: AxiosResponse) => void) {
+export function postAPIData(
+  url: string,
+  data: any,
+  auth: Auth,
+  func: (r: AxiosResponse) => void,
+  params: any = {}
+) {
   APIAxios.post(url, data, {
-    headers: { Authorization: 'Bearer ' + auth.token() }
+    headers: { Authorization: 'Bearer ' + auth.token() },
+    params: params
   })
     .then(func)
     .catch((err) => {
