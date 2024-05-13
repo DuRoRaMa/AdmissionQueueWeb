@@ -18,10 +18,10 @@ const dataLength = computed(() => {
   return locations.length != 0
 })
 onMounted(() => {
-  getAPIData('/queue/settings', auth, (response) => {
+  getAPIData('/queue/operator/settings', auth, (response) => {
     settings = response.data as OperatorSettings
 
-    getAPIData('/queue/location', auth, (response) => {
+    getAPIData('/queue/locations', auth, (response) => {
       locations.push(...(response.data as OperatorLocation[]))
       for (let loc of locations) {
         if (loc.settings !== null && settings!.location !== loc.id) {
@@ -44,7 +44,7 @@ function saveSettings() {
     location: currentLocation.value
   }
   loadingSave.value = true
-  patchAPIData(`/queue/settings/`, postData, auth, (_response) => {
+  patchAPIData(`/queue/operator/settings/`, postData, auth, (_response) => {
     loadingSave.value = false
     let nconfig: BNotificationConfig = {
       message: `Настройки оператора успешно сохранены`,
