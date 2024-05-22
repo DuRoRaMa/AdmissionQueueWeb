@@ -17,8 +17,8 @@ server {
     listen 443 ssl;
     server_name pavlyuk-it.ru;
 
-    ssl_certificate ${SSL_CRT};
-    ssl_certificate_key ${SSL_KEY};
+    ssl_certificate /etc/nginx/ssl/pavlyuk-it.ru.crt;
+    ssl_certificate_key /etc/nginx/ssl/pavlyuk-it.ru.key;
     root /usr/share/nginx/html;
 
     index index.html;
