@@ -2,8 +2,12 @@ version: '3.8'
 services:
   frontend:
     env_file: ./.env.production
+    environment:
+      - SSL_CRT=${SSL_CRT}
+      - SSL_KEY=${SSL_KEY}
     build:
       context: .
       target: production
     ports:
       - 80:80
+      - 443:443
