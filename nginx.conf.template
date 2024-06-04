@@ -23,6 +23,14 @@ server {
     root /usr/share/nginx/html;
 
     index index.html;
+    location /webhook {
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass          http://aq-bot:8001/webhook;
+
+        proxy_set_header  Host               $host;
+        proxy_set_header  X-Real-IP          $remote_addr;
+        proxy_set_header  X-Forwarded-For    $proxy_add_x_forwarded_for;
+    }
     location /api {
         resolver 127.0.0.11 valid=30s;
         proxy_pass          http://aq-backend:8000/api;
