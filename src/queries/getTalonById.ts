@@ -8,6 +8,7 @@ const GET_TALON_BY_ID = gql`
       ordinal
       purpose {
         name
+        description
       }
       logs {
         id
@@ -16,6 +17,7 @@ const GET_TALON_BY_ID = gql`
         createdAt
       }
     }
+    countActiveTalons
   }
 `
 export default GET_TALON_BY_ID
