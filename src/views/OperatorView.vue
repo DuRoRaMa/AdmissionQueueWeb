@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { NotificationProgrammatic } from '@ntohq/buefy-next'
 import { getAPIData, postAPIData } from '@/axios'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue'
 import { useAuth } from 'vue-auth3'
 import { useRouter } from 'vue-router'
 import type { OperatorSettings } from '@/types'
-import { useLazyQuery, useQuery } from '@vue/apollo-composable'
+import { useQuery } from '@vue/apollo-composable'
 import { GET_TALON_BY_ID } from '@/queries'
-
+import HelpModalForm from '@/components/HelpModalForm.vue'
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
 const auth = useAuth()
 const router = useRouter()
-const Notification = new NotificationProgrammatic()
 let currentSettings: OperatorSettings | null = null
 let currentTalon = ref({})
-let currentTalonId = ref(null)
+let currentTalonId = ref(-1)
+const enabledTalonById = ref(false)
 const talonStatus = computed(() => {
   if (!currentTalon.value?.name) return 'NOT_ASSIGNED'
   return currentTalon.value.logs.at(-1).action
@@ -26,12 +26,22 @@ let disabledStateOfButtons = ref({
   complete: true,
   redirect: true
 })
+let talonById = useQuery(
+  GET_TALON_BY_ID,
+  { id: currentTalonId },
+  { enabled: enabledTalonById, fetchPolicy: 'cache-and-network' }
+)
+talonById.onResult((res) => {
+  if (res.loading) return null
+  currentTalon.value = res.data.talonById
+})
 watch(
   talonStatus,
   (newStatus, oldStatus) => {
     switch (newStatus) {
       case 'NOT_ASSIGNED':
         disabledStateOfButtons.value.next = false
+        if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true
         break
       case 'ASSIGNED':
         disabledStateOfButtons.value.next = true
@@ -51,6 +61,7 @@ watch(
         break
       case 'COMPLETED':
         disabledStateOfButtons.value.complete = true
+        break
       default:
         break
     }
@@ -89,6 +100,22 @@ function startTalon() {
     }
   )
 }
+function cancelTalon() {
+  disabledStateOfButtons.value.complete = true
+  postAPIData(
+    '/queue/operator/talon/action',
+    null,
+    auth,
+    (response) => {
+      if (response.status === 200) {
+        currentTalon.value = {}
+      }
+    },
+    {
+      action: 'cancel'
+    }
+  )
+}
 function completeTalon() {
   disabledStateOfButtons.value.complete = true
   postAPIData(
@@ -98,9 +125,6 @@ function completeTalon() {
     (response) => {
       if (response.status === 200) {
         currentTalon.value = {}
-        enabledTalonById.value = false
-        currentTalonId.value = null
-        enabledTalonById.value = true
       }
     },
     {
@@ -108,21 +132,22 @@ function completeTalon() {
     }
   )
 }
-const enabledTalonById = ref(false)
-let talonById = useQuery(
-  GET_TALON_BY_ID,
-  { id: currentTalonId },
-  { enabled: enabledTalonById, fetchPolicy: 'cache-and-network' }
-)
-talonById.onResult((res) => {
-  if (res.loading) return null
-  currentTalon.value = res.data.talonById
-})
+function cardHelpModal() {
+  $buefy.modal.open({
+    component: HelpModalForm,
+    props: { auth },
+    hasModalCard: true,
+    trapFocus: true
+  })
+}
 onMounted(() => {
   getAPIData('/queue/operator/settings', auth, (response) => {
     currentSettings = response.data as OperatorSettings
+    if (currentSettings.automatic_assignment) {
+      disabledStateOfButtons.value.next = true
+    }
     if (currentSettings.location === null || currentSettings.purposes.length === 0) {
-      Notification.open({
+      $buefy.notification.open({
         message: `Настройки оператора должны быть заполнены`,
         duration: 5000,
         type: 'is-warning',
@@ -145,7 +170,7 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="columns">
+  <div class="wrapper columns">
     <div class="column">
       <p class="title">Панель оператора</p>
       <div class="columns">
@@ -163,7 +188,11 @@ onMounted(() => {
               <b-button class="cell" type="is-warning" :disabled="disabledStateOfButtons.notify"
                 >Позвать</b-button
               >
-              <b-button class="cell" type="is-danger" :disabled="disabledStateOfButtons.cancel"
+              <b-button
+                @click="cancelTalon()"
+                class="cell"
+                type="is-danger"
+                :disabled="disabledStateOfButtons.cancel"
                 >Отменить</b-button
               >
               <b-button
@@ -188,7 +217,7 @@ onMounted(() => {
                 :disabled="disabledStateOfButtons.redirect"
                 >Переадресовать</b-button
               >
-              <b-button class="cell" type="is-info">Помощь</b-button>
+              <b-button class="cell" type="is-info" @click="cardHelpModal">Помощь</b-button>
             </div>
           </div>
         </div>
@@ -225,3 +254,8 @@ onMounted(() => {
     </div>
   </div>
 </template>
+<style>
+.wrapper {
+  margin: auto;
+}
+</style>
