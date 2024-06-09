@@ -2,16 +2,18 @@
 import { getAPIData, postAPIData } from '@/axios'
 import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'vue'
 import { useAuth } from 'vue-auth3'
-import type { TalonPurpose } from '@/types'
+import type { OperatorLocation, TalonPurpose } from '@/types'
 import { useLazyQuery } from '@vue/apollo-composable'
 import { GET_TALON_BY_ID } from '@/queries'
 
 const auth = useAuth()
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
-let currentPurpose = ref(0)
-let currentComment = ref('')
 let loadingRegister = ref(false)
-let purposes = reactive<TalonPurpose[]>([])
+const currentState = reactive({ purpose: null, comment: '' })
+const info = reactive({
+  purposes: [] as TalonPurpose[],
+  locations: [] as OperatorLocation[]
+})
 let lastTalonId = ref(0)
 let lastTalonById = ref({})
 let talonById = useLazyQuery(GET_TALON_BY_ID, {}, { fetchPolicy: 'cache-and-network' })
@@ -19,7 +21,7 @@ talonById.onResult((res) => {
   if (res.loading) return null
   lastTalonById.value = res.data
 })
-watch(lastTalonId, async (newTalonId, oldTalonId) => {
+watch(lastTalonId, async (newTalonId, _oldTalonId) => {
   if (newTalonId !== 0) {
     ;(await talonById.load(null, { id: newTalonId })) ||
       (await talonById.refetch({ id: newTalonId }))
@@ -64,39 +66,44 @@ function print() {
     })
 }
 const dataLength = computed(() => {
-  return purposes.length != 0
+  return info.purposes.length != 0
 })
+function validateRegTalon() {
+  if (currentState.purpose == null) {
+    $buefy.toast.open({
+      message: 'Выберите цель',
+      type: 'is-danger'
+    })
+    return false
+  }
+  return true
+}
 function registerTalon() {
+  if (!validateRegTalon()) return
   loadingRegister.value = true
-  postAPIData(
-    '/queue/talon/',
-    { purpose: currentPurpose.value, comment: currentComment.value },
-    auth,
-    (response) => {
-      loadingRegister.value = false
-      if (response.status === 201) {
-        lastTalonId.value = response.data.id
-        $buefy.notification.open({
-          message: `Талон успешно создан`,
-          duration: 5000,
-          type: 'is-success',
-          pauseOnHover: true
-        })
-      } else {
-        $buefy.notification.open({
-          message: `Произошла ошибка при отправке запроса. Повторите позже или свяжитесь с администратором`,
-          duration: 5000,
-          type: 'is-error',
-          pauseOnHover: true
-        })
-      }
+  postAPIData('/queue/talon/', currentState, auth, (response) => {
+    loadingRegister.value = false
+    if (response.status === 201) {
+      lastTalonId.value = response.data.id
+      $buefy.notification.open({
+        message: `Талон успешно создан`,
+        duration: 5000,
+        type: 'is-success',
+        pauseOnHover: true
+      })
+    } else {
+      $buefy.notification.open({
+        message: `Произошла ошибка при отправке запроса. Повторите позже или свяжитесь с администратором`,
+        duration: 5000,
+        type: 'is-error',
+        pauseOnHover: true
+      })
     }
-  )
+  })
 }
 onMounted(() => {
-  getAPIData('/queue/purposes', auth, (response) => {
-    purposes.push(...(response.data as TalonPurpose[]))
-    currentPurpose.value = purposes[0].id
+  getAPIData('/queue/operator/info', auth, (response) => {
+    Object.assign(info, response.data)
   })
 })
 </script>
@@ -108,15 +115,19 @@ onMounted(() => {
         <div class="column">
           <p class="title">Ресепшен</p>
           <b-field label="Цель">
-            <b-select v-if="dataLength" v-model="currentPurpose" placeholder="Выберите">
-              <option v-for="option in purposes" :value="option.id" :key="option.id.toString()">
+            <b-select v-if="dataLength" v-model="currentState.purpose" placeholder="Выберите">
+              <option
+                v-for="option in info.purposes"
+                :value="option.id"
+                :key="option.id.toString()"
+              >
                 {{ option.name }}
               </option>
             </b-select>
             <b-skeleton v-else :animated="true"></b-skeleton>
           </b-field>
           <b-field label="Комментарий">
-            <b-input v-model="currentComment" maxlength="200" type="textarea"></b-input>
+            <b-input v-model="currentState.comment" maxlength="200" type="textarea"></b-input>
           </b-field>
           <b-button @click="registerTalon" :loading="loadingRegister">Зарегистрировать</b-button>
         </div>
