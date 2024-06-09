@@ -9,14 +9,13 @@ const axiosDriver = defineHttpDriver({
 })
 
 const authDriver = defineAuthDriver({
-  request(auth, options, token) {
-    // eslint-disable-next-line functional/immutable-data
+  request(auth: any, options: any, token: any) {
     options.headers['Authorization'] = 'Bearer ' + token
 
     return options
   },
 
-  response(auth, res) {
+  response(auth: any, res: any) {
     const token = res.data.auth_token
 
     if (token) {
