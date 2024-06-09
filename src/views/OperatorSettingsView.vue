@@ -1,58 +1,53 @@
 <script setup lang="ts">
 import { getAPIData, patchAPIData } from '@/axios'
-import { type OperatorSettings, type OperatorLocation, type TalonPurpose } from '@/types'
-import { NotificationProgrammatic } from '@ntohq/buefy-next'
-import type { BNotificationConfig } from '@ntohq/buefy-next/types/components'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { type OperatorLocation, type TalonPurpose } from '@/types'
+import { computed, getCurrentInstance, onMounted, reactive, ref } from 'vue'
 import { useAuth } from 'vue-auth3'
 
 const auth = useAuth()
-const Notification = new NotificationProgrammatic()
-let settings: OperatorSettings | null = null
-let locations: OperatorLocation[] = reactive([])
-let purposes: TalonPurpose[] = reactive([])
-let currentPurposes = ref<number[]>([])
-let currentLocation = ref()
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
+let info = reactive({
+  purposes: [] as TalonPurpose[],
+  locations: [] as OperatorLocation[]
+})
+let currentState = reactive({
+  purposes: [] as number[],
+  location: -1,
+  automatic_assignment: false
+})
 let loadingSave = ref(false)
 const dataLength = computed(() => {
-  return locations.length != 0
+  return info.locations.length != 0
 })
 onMounted(() => {
   getAPIData('/queue/operator/settings', auth, (response) => {
-    settings = response.data as OperatorSettings
+    Object.assign(currentState, response.data)
 
-    getAPIData('/queue/locations', auth, (response) => {
-      locations.push(...(response.data as OperatorLocation[]))
-      for (let loc of locations) {
-        if (loc.settings !== null && settings!.location !== loc.id) {
-          loc.disabled = true
+    getAPIData('/queue/info', auth, (response) => {
+      Object.assign(info, response.data)
+      for (let loc_i in info.locations) {
+        if (
+          info.locations[loc_i].settings !== null &&
+          currentState.location !== info.locations[loc_i].id
+        ) {
+          info.locations[loc_i].disabled = true
+        } else {
+          info.locations[loc_i].disabled = false
         }
-      }
-      currentLocation.value = settings!.location
-    })
-    getAPIData('/queue/purposes', auth, (response) => {
-      purposes.push(...(response.data as TalonPurpose[]))
-      if (settings!.purposes !== null) {
-        currentPurposes.value = settings!.purposes
       }
     })
   })
 })
 function saveSettings() {
-  let postData = {
-    purposes: currentPurposes.value,
-    location: currentLocation.value
-  }
   loadingSave.value = true
-  patchAPIData(`/queue/operator/settings/`, postData, auth, (_response) => {
+  patchAPIData(`/queue/operator/settings/`, currentState, auth, () => {
     loadingSave.value = false
-    let nconfig: BNotificationConfig = {
+    $buefy.notification.open({
       message: `Настройки оператора успешно сохранены`,
       duration: 5000,
       type: 'is-success',
       pauseOnHover: true
-    }
-    Notification.open(nconfig)
+    })
   })
 }
 </script>
@@ -64,10 +59,10 @@ function saveSettings() {
         <div class="column">
           <p class="title">Настройки оператора</p>
           <b-field label="Рабочее место">
-            <b-select v-if="dataLength" v-model="currentLocation" placeholder="Выберите">
+            <b-select v-if="dataLength" v-model="currentState.location" placeholder="Выберите">
               <option :value="null" :key="0">Освободить рабочее место</option>
               <option
-                v-for="option in locations"
+                v-for="option in info.locations"
                 :value="option.id"
                 :key="option.id.toString()"
                 :disabled="option.disabled"
@@ -77,10 +72,11 @@ function saveSettings() {
             </b-select>
             <b-skeleton v-else :animated="true"></b-skeleton>
           </b-field>
+          <b-switch v-model="currentState.automatic_assignment">Автоматическое назначение</b-switch>
           <div class="block">
             <b-checkbox
-              v-model="currentPurposes"
-              v-for="box in purposes"
+              v-model="currentState.purposes"
+              v-for="box in info.purposes"
               v-bind:key="box.id"
               v-bind:native-value="box.id"
             >

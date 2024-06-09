@@ -5,9 +5,9 @@ export interface OperatorLocation {
   disabled?: boolean
 }
 export interface OperatorSettings {
-  id: number
   location: number
   purposes: number[]
+  automatic_assignment: boolean
 }
 export interface TalonPurpose {
   id: number
