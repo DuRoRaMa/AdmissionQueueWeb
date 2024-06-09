@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { getAPIData, postAPIData } from '@/axios'
-import { computed, h, onMounted, reactive, ref, watch } from 'vue'
+import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'vue'
 import { useAuth } from 'vue-auth3'
 import type { TalonPurpose } from '@/types'
-import { NotificationProgrammatic } from '@ntohq/buefy-next'
 import { useLazyQuery } from '@vue/apollo-composable'
 import { GET_TALON_BY_ID } from '@/queries'
 
 const auth = useAuth()
-const Notification = new NotificationProgrammatic()
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
 let currentPurpose = ref(0)
 let currentComment = ref('')
 let loadingRegister = ref(false)
@@ -38,6 +37,31 @@ function print() {
       'Access-Control-Allow-Origin': '*'
     }
   })
+    .catch((error) => {
+      $buefy.notification.open({
+        message: `Произошла ошибка при попытке печати талона. Проверьте принтер и сервер печати!`,
+        duration: 5000,
+        type: 'is-danger',
+        pauseOnHover: true
+      })
+    })
+    .then((response) => {
+      if (response === undefined) {
+        $buefy.notification.open({
+          message: `Произошла ошибка при попытке печати талона. Проверьте принтер и сервер печати!`,
+          duration: 5000,
+          type: 'is-danger',
+          pauseOnHover: true
+        })
+      } else {
+        $buefy.notification.open({
+          message: `Печать талона выполнена успешно`,
+          duration: 3000,
+          type: 'is-success',
+          pauseOnHover: true
+        })
+      }
+    })
 }
 const dataLength = computed(() => {
   return purposes.length != 0
@@ -52,17 +76,17 @@ function registerTalon() {
       loadingRegister.value = false
       if (response.status === 201) {
         lastTalonId.value = response.data.id
-        Notification.open({
+        $buefy.notification.open({
           message: `Талон успешно создан`,
           duration: 5000,
           type: 'is-success',
           pauseOnHover: true
         })
       } else {
-        Notification.open({
+        $buefy.notification.open({
           message: `Произошла ошибка при отправке запроса. Повторите позже или свяжитесь с администратором`,
           duration: 5000,
-          type: 'is-success',
+          type: 'is-error',
           pauseOnHover: true
         })
       }
@@ -95,7 +119,6 @@ onMounted(() => {
             <b-input v-model="currentComment" maxlength="200" type="textarea"></b-input>
           </b-field>
           <b-button @click="registerTalon" :loading="loadingRegister">Зарегистрировать</b-button>
-          <!-- <b-button @click="print()">Print</b-button> -->
         </div>
         <div class="column is-one-quarter"></div>
       </div>
