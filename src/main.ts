@@ -1,6 +1,6 @@
-import './assets/main.css'
 import 'bulma/css/bulma.css'
 import '@ntohq/buefy-next/dist/buefy.css'
+import './assets/main.css'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
