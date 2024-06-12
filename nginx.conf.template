@@ -52,7 +52,7 @@ server {
     }
     location /graphql/ {
         resolver 127.0.0.11 valid=30s;
-        proxy_pass          ws://aq-backend:8000/graphql/;
+        proxy_pass          http://aq-backend:8000/graphql/;
 
         proxy_set_header  Host               $host;
         proxy_set_header  X-Real-IP          $remote_addr;
