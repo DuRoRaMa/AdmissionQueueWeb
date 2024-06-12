@@ -33,7 +33,7 @@ let talonById = useQuery(
 )
 talonById.onResult((res) => {
   if (res.loading) return null
-  currentTalon.value = res.data.talonById
+  currentTalon.value = res.data.talon
 })
 watch(
   talonStatus,
@@ -43,23 +43,23 @@ watch(
         disabledStateOfButtons.value.next = false
         if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true
         break
-      case 'ASSIGNED':
+      case 'Assigned':
         disabledStateOfButtons.value.next = true
         disabledStateOfButtons.value.notify = false
         disabledStateOfButtons.value.start = false
         disabledStateOfButtons.value.redirect = false
         disabledStateOfButtons.value.cancel = false
         break
-      case 'CANCELED':
+      case 'Canceled':
         disabledStateOfButtons.value.cancel = false
         break
-      case 'STARTED':
+      case 'Started':
         disabledStateOfButtons.value.next = true
         disabledStateOfButtons.value.start = true
         disabledStateOfButtons.value.complete = false
         disabledStateOfButtons.value.redirect = false
         break
-      case 'COMPLETED':
+      case 'Completed':
         disabledStateOfButtons.value.complete = true
         break
       default:
@@ -231,7 +231,7 @@ onMounted(() => {
             Время регистрации:
             {{
               new Date(
-                currentTalon.logs.filter((x: any) => x.action === 'CREATED')[0].createdAt
+                currentTalon.logs.filter((x: any) => x.action === 'Created')[0].createdAt
               ).toLocaleString() || ''
             }}
           </div>
@@ -239,7 +239,7 @@ onMounted(() => {
           <div>Цель: {{ currentTalon.purpose.name || '' }}</div>
           <div>
             Комментарии:
-            {{ talonById.result.value?.talonById.logs.map((x: any) => x.comment) || '' }}
+            {{ talonById.result.value?.talon.logs.map((x: any) => x.comment) || '' }}
           </div>
         </div>
         <div v-else>
