@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { getAPIData, postAPIData } from '@/axios'
-import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue'
-import { useAuth } from 'vue-auth3'
-import { useRouter } from 'vue-router'
-import type { OperatorSettings } from '@/types'
-import { useQuery } from '@vue/apollo-composable'
-import { GET_TALON_BY_ID } from '@/queries'
-import HelpModalForm from '@/components/HelpModalForm.vue'
-const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
-const auth = useAuth()
-const router = useRouter()
-let currentSettings: OperatorSettings | null = null
-let currentTalon = ref({})
-let currentTalonId = ref(-1)
-const enabledTalonById = ref(false)
+import { getAPIData, postAPIData } from '@/axios';
+import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
+import { useAuth } from 'vue-auth3';
+import { useRouter } from 'vue-router';
+import type { OperatorSettings } from '@/types';
+import { useQuery } from '@vue/apollo-composable';
+import { GET_TALON_BY_ID } from '@/queries';
+import HelpModalForm from '@/components/HelpModalForm.vue';
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
+const auth = useAuth();
+const router = useRouter();
+let currentSettings: OperatorSettings | null = null;
+let currentTalon = ref({});
+let currentTalonId = ref(-1);
+const enabledTalonById = ref(false);
 const talonStatus = computed(() => {
-  if (!currentTalon.value?.name) return 'NOT_ASSIGNED'
-  return currentTalon.value.logs.at(-1).action
-})
+  if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
+  return currentTalon.value.logs.at(-1).action;
+});
 let disabledStateOfButtons = ref({
   next: true,
   notify: true,
@@ -25,112 +25,112 @@ let disabledStateOfButtons = ref({
   start: true,
   complete: true,
   redirect: true
-})
+});
 let talonById = useQuery(
   GET_TALON_BY_ID,
   { id: currentTalonId },
   { enabled: enabledTalonById, fetchPolicy: 'cache-and-network' }
-)
+);
 talonById.onResult((res) => {
-  if (res.loading) return null
-  currentTalon.value = res.data.talon
-})
+  if (res.loading) return null;
+  currentTalon.value = res.data.talon;
+});
 watch(
   talonStatus,
   (newStatus, oldStatus) => {
     switch (newStatus) {
       case 'NOT_ASSIGNED':
-        disabledStateOfButtons.value.next = false
-        if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true
-        break
+        disabledStateOfButtons.value.next = false;
+        if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true;
+        break;
       case 'Assigned':
-        disabledStateOfButtons.value.next = true
-        disabledStateOfButtons.value.notify = false
-        disabledStateOfButtons.value.start = false
-        disabledStateOfButtons.value.redirect = false
-        disabledStateOfButtons.value.cancel = false
-        break
+        disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.notify = false;
+        disabledStateOfButtons.value.start = false;
+        disabledStateOfButtons.value.redirect = false;
+        disabledStateOfButtons.value.cancel = false;
+        break;
       case 'Canceled':
-        disabledStateOfButtons.value.cancel = false
-        break
+        disabledStateOfButtons.value.cancel = false;
+        break;
       case 'Started':
-        disabledStateOfButtons.value.next = true
-        disabledStateOfButtons.value.start = true
-        disabledStateOfButtons.value.complete = false
-        disabledStateOfButtons.value.redirect = false
-        break
+        disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.complete = false;
+        disabledStateOfButtons.value.redirect = false;
+        break;
       case 'Completed':
-        disabledStateOfButtons.value.complete = true
-        break
+        disabledStateOfButtons.value.complete = true;
+        break;
       default:
-        break
+        break;
     }
   },
   { immediate: true }
-)
+);
 function getNextTalon() {
-  disabledStateOfButtons.value.next = true
+  disabledStateOfButtons.value.next = true;
   getAPIData(
     '/queue/operator/talon/action',
     auth,
     (response) => {
       if (response.data.id) {
-        currentTalonId.value = response.data.id
-        enabledTalonById.value = true
+        currentTalonId.value = response.data.id;
+        enabledTalonById.value = true;
       } else {
-        disabledStateOfButtons.value.next = false
+        disabledStateOfButtons.value.next = false;
       }
     },
     { action: 'next' }
-  )
+  );
 }
 function startTalon() {
-  disabledStateOfButtons.value.start = true
+  disabledStateOfButtons.value.start = true;
   postAPIData(
     '/queue/operator/talon/action',
     null,
     auth,
     (response) => {
       if (response.status === 200) {
-        talonById.refetch()
+        talonById.refetch();
       }
     },
     {
       action: 'start'
     }
-  )
+  );
 }
 function cancelTalon() {
-  disabledStateOfButtons.value.complete = true
+  disabledStateOfButtons.value.complete = true;
   postAPIData(
     '/queue/operator/talon/action',
     null,
     auth,
     (response) => {
       if (response.status === 200) {
-        currentTalon.value = {}
+        currentTalon.value = {};
       }
     },
     {
       action: 'cancel'
     }
-  )
+  );
 }
 function completeTalon() {
-  disabledStateOfButtons.value.complete = true
+  disabledStateOfButtons.value.complete = true;
   postAPIData(
     '/queue/operator/talon/action',
     null,
     auth,
     (response) => {
       if (response.status === 200) {
-        currentTalon.value = {}
+        currentTalon.value = {};
       }
     },
     {
       action: 'complete'
     }
-  )
+  );
 }
 function cardHelpModal() {
   $buefy.modal.open({
@@ -138,13 +138,13 @@ function cardHelpModal() {
     props: { auth },
     hasModalCard: true,
     trapFocus: true
-  })
+  });
 }
 onMounted(() => {
   getAPIData('/queue/operator/settings', auth, (response) => {
-    currentSettings = response.data as OperatorSettings
+    currentSettings = response.data as OperatorSettings;
     if (currentSettings.automatic_assignment) {
-      disabledStateOfButtons.value.next = true
+      disabledStateOfButtons.value.next = true;
     }
     if (currentSettings.location === null || currentSettings.purposes.length === 0) {
       $buefy.notification.open({
@@ -152,22 +152,22 @@ onMounted(() => {
         duration: 5000,
         type: 'is-warning',
         pauseOnHover: true
-      })
-      router.push({ name: 'operator_settings' })
+      });
+      router.push({ name: 'operator_settings' });
     }
-  })
+  });
   getAPIData(
     '/queue/operator/talon/action',
     auth,
     (response) => {
       if (response.data.id) {
-        currentTalonId.value = response.data.id
-        enabledTalonById.value = true
+        currentTalonId.value = response.data.id;
+        enabledTalonById.value = true;
       }
     },
     { action: 'current' }
-  )
-})
+  );
+});
 </script>
 <template>
   <div class="wrapper columns">
@@ -249,7 +249,7 @@ onMounted(() => {
           <div>Цель:</div>
           <div>Комментарии:</div>
         </div>
-        <input type="text" v-model="currentTalonId" />
+        <!-- <input type="text" v-model="currentTalonId" /> -->
       </div>
     </div>
   </div>

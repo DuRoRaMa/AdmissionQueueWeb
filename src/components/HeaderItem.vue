@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useAuth } from 'vue-auth3'
-import fefu_logo from '@/assets/FEFU_logo.svg'
+import { useAuth } from 'vue-auth3';
+import fefu_logo from '@/assets/FEFU_logo.svg';
 
-const auth = useAuth()
+const auth = useAuth();
 </script>
 <template>
   <b-navbar v-show="$route.name !== 'tablo'">
@@ -30,7 +30,7 @@ const auth = useAuth()
             Войти
           </b-navbar-item>
           <b-navbar-item tag="div" v-else>
-            <b-navbar-item
+            <!-- <b-navbar-item
               tag="router-link"
               :to="{ name: 'profile' }"
               class="button is-primary"
@@ -38,7 +38,7 @@ const auth = useAuth()
               size="is-medium"
             >
               Профиль
-            </b-navbar-item>
+            </b-navbar-item> -->
             <a @click="auth.logout" class="button is-primary"> Выйти </a>
           </b-navbar-item>
         </div>
