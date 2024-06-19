@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { NotificationProgrammatic } from '@ntohq/buefy-next';
+console.log(import.meta.env);
 
 const APIAxios = axios.create({
   baseURL: import.meta.env.VITE_API_URL
