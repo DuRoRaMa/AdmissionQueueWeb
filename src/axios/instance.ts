@@ -1,12 +1,16 @@
-import axios, { AxiosError, type AxiosResponse } from 'axios'
-import { NotificationProgrammatic } from '@ntohq/buefy-next'
+import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import { NotificationProgrammatic } from '@ntohq/buefy-next';
 
 const APIAxios = axios.create({
   baseURL: import.meta.env.VITE_API_URL
-})
+});
+APIAxios.interceptors.request.use((request: InternalAxiosRequestConfig) => {
+  console.log(request.url, request);
+  return request;
+});
 APIAxios.interceptors.response.use(
   (response: AxiosResponse) => {
-    return response
+    return response;
   },
   (error: AxiosError) => {
     if (error.code == 'ERR_NETWORK') {
@@ -15,9 +19,9 @@ APIAxios.interceptors.response.use(
         duration: 3000,
         type: 'is-danger',
         pauseOnHover: true
-      })
+      });
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
-export default APIAxios
+);
+export default APIAxios;
