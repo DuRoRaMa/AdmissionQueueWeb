@@ -2,20 +2,34 @@
 const { talon } = defineProps(['talon']);
 </script>
 <template>
-  <div
-    class="column is-two-fifths"
-    style="background-color: aliceblue; border-radius: 10px; margin-top: 10px"
-  >
-    <p class="title">{{ talon.name }}</p>
+  <div class="column is-two-fifths" style="margin-bottom: 38px">
+    <div class="columns">
+      <div class="column"></div>
+      <div class="column is-two-thirds">
+        <p style="min-width: 7ch">
+          {{ talon.name }}
+        </p>
+      </div>
+    </div>
   </div>
-  <div class="column is-one-fifth" style="margin-top: 10px">
-    <b-icon class="fefu-white" icon="arrow-right" size="is-large"></b-icon>
+  <div class="column is-two-fifths" style="margin-bottom: 38px">
+    <img src="@/assets/TabloArrow.svg" alt="" style="padding-left: 24%; transform: scale(0.8)" />
   </div>
-  <div
-    class="column is-two-fifths"
-    style="background-color: aliceblue; border-radius: 10px; margin-top: 10px"
-  >
-    <p class="title" style="padding-bottom: 0">{{ talon.location }}</p>
+  <div class="column is-one-fifth" style="margin-bottom: 38px">
+    <p>
+      {{ talon.location }}
+    </p>
   </div>
 </template>
-<style scoped></style>
+<style scoped>
+p {
+  text-align: center;
+  font-family: HeliosC;
+  font-weight: 800;
+  font-size: 40px;
+  background-color: #1d3d84;
+  color: white;
+  border-radius: 50px;
+  /* margin-top: 10px; */
+}
+</style>

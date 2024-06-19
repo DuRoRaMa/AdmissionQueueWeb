@@ -1,29 +1,50 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
-import TimePanel from './TimePanel.vue'
+import { computed, reactive } from 'vue';
+import { useTime } from 'vue-timer-hook';
 
-let date = reactive(new Date())
-date.toDateString()
+const time = useTime('24-hour');
+const hours = computed(() => {
+  return time.hours.value.toLocaleString('ru-ru', { minimumIntegerDigits: 2 });
+});
+const minutes = computed(() => {
+  return time.minutes.value.toLocaleString('ru-ru', { minimumIntegerDigits: 2 });
+});
+let date = reactive(new Date());
+date.toDateString();
 setInterval(() => {
-  date = new Date()
-}, 60000)
-
+  date = new Date();
+}, 60000);
 </script>
 <template>
-  <div class="columns" style="background-color: #265AA4;">
+  <div class="columns" style="padding-top: 6px">
     <div class="column is-one-quarter">
-      <p class="title is-2 fefu-white">
-      {{ date.toLocaleDateString() }}
+      <p style="color: #58595b; margin-left: 40px; font-family: Unbounded-Medium">
+        {{
+          date.toLocaleDateString('ru-ru', { day: '2-digit', month: '2-digit', year: '2-digit' })
+        }}
       </p>
     </div>
     <div class="column auto">
-      <p class="title is-2 has-text-centered fefu-white">
-      Приемная комиссия
-      </p>
+      <p class="has-text-centered" style="font-family: 'Unbounded-Bold'">Приёмная комиссия</p>
     </div>
     <div class="column is-one-quarter">
-      <TimePanel/>
+      <div class="columns">
+        <div class="column"></div>
+        <div class="column is-half">
+          <p
+            class="has-text-left"
+            style="color: #58595b; padding-left: 25px; font-family: Unbounded-Medium"
+          >
+            {{ hours }}:{{ minutes }}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
-<style></style>
+<style scoped>
+p {
+  font-size: 26px;
+  color: #1d3d84;
+}
+</style>
