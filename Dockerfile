@@ -3,7 +3,7 @@ WORKDIR /usr/src/app
 COPY package*.json .
 RUN npm install
 COPY . .
-COPY env.pavlyuk env.production
+COPY .env.pavlyuk env.production
 RUN npm run build-only
 
 FROM nginx:stable-alpine as production
