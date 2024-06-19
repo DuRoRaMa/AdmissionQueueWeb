@@ -1,10 +1,10 @@
 version: '3.8'
 services:
   frontend:
-    env_file: ./.env.pavlyuk-it.ru
+    env_file: ./.env.pavlyuk
     container_name: aq-frontend
     build:
-      context: .
+      context: ./Dockerfile
       target: production
     networks:
       - aq-proxy
