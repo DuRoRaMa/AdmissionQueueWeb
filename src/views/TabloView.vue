@@ -1,4 +1,3 @@
-<!-- eslint-disable no-case-declarations -->
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
 import { useQuery, useSubscription } from '@vue/apollo-composable';
