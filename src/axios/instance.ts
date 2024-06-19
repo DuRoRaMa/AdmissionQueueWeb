@@ -8,6 +8,8 @@ APIAxios.interceptors.request.use((request: InternalAxiosRequestConfig) => {
   console.log(request.url);
   console.log(request);
   console.log(request.baseURL);
+  console.log(import.meta.env.VITE_API_URL);
+  console.log(import.meta.env);
 
   return request;
 });
