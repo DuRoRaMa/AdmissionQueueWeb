@@ -5,7 +5,10 @@ const APIAxios = axios.create({
   baseURL: import.meta.env.VITE_API_URL
 });
 APIAxios.interceptors.request.use((request: InternalAxiosRequestConfig) => {
-  console.log(request.url, request);
+  console.log(request.url);
+  console.log(request);
+  console.log(request.baseURL);
+
   return request;
 });
 APIAxios.interceptors.response.use(
