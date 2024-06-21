@@ -1,17 +1,4 @@
-@import url("https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css");
-
-.fefu-blue {
-  color: #3b63ab;
-}
-
-.fefu-blue-2 {
-  color: #6995d0;
-}
-
-.fefu-red {
-  color: #bc2940;
-}
-
-.fefu-white {
-  color: #ffffff;
-}
+@import url(materialdesignicons.min.css);
+@import url(heliosc.css);
+@import url(unbounded-bold.css);
+@import url(unbounded-medium.css);
