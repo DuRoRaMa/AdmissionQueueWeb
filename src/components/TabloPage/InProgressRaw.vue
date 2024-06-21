@@ -2,7 +2,7 @@
 const { talon } = defineProps(['talon']);
 </script>
 <template>
-  <div class="column is-two-fifths" style="margin-bottom: 38px">
+  <div class="column is-two-fifths" style="margin-bottom: 36px">
     <div class="columns">
       <div class="column"></div>
       <div class="column is-two-thirds">
@@ -12,10 +12,10 @@ const { talon } = defineProps(['talon']);
       </div>
     </div>
   </div>
-  <div class="column is-two-fifths" style="margin-bottom: 38px">
+  <div class="column is-two-fifths" style="margin-bottom: 36px">
     <img src="@/assets/TabloArrow.svg" alt="" style="padding-left: 24%; transform: scale(0.8)" />
   </div>
-  <div class="column is-one-fifth" style="margin-bottom: 38px">
+  <div class="column is-one-fifth" style="margin-bottom: 36px">
     <p>
       {{ talon.location }}
     </p>
