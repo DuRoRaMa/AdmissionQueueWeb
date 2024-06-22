@@ -82,7 +82,9 @@ watch(
           location: log.createdBy.operatorSettings!.location.name
         };
         queueForNotification.push(talon);
-        data.talons.unshift(talon);
+        if (log.id > data.lastTalonLogId) {
+          data.talons.unshift(talon);
+        }
         break;
       case 'Completed':
         data.talons.splice(
