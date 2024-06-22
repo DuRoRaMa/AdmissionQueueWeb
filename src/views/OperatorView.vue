@@ -116,6 +116,25 @@ function cancelTalon() {
     }
   );
 }
+function notifyTalon() {
+  disabledStateOfButtons.value.complete = true;
+  postAPIData(
+    '/queue/operator/talon/action',
+    null,
+    auth,
+    (response) => {
+      $buefy.notification.open({
+        message: `Уведомление запущено`,
+        duration: 1000,
+        type: 'is-success',
+        pauseOnHover: false
+      });
+    },
+    {
+      action: 'notify'
+    }
+  );
+}
 function completeTalon() {
   disabledStateOfButtons.value.complete = true;
   postAPIData(
@@ -185,38 +204,47 @@ onMounted(() => {
               >
                 Следующий
               </b-button>
-              <b-button class="cell" type="is-warning" :disabled="disabledStateOfButtons.notify"
-                >Позвать</b-button
+              <b-button
+                @click="notifyTalon()"
+                class="cell"
+                type="is-warning"
+                :disabled="disabledStateOfButtons.notify"
               >
+                Позвать
+              </b-button>
               <b-button
                 @click="cancelTalon()"
                 class="cell"
                 type="is-danger"
                 :disabled="disabledStateOfButtons.cancel"
-                >Отменить</b-button
               >
+                Отменить
+              </b-button>
               <b-button
                 v-if="!disabledStateOfButtons.start"
                 @click="startTalon()"
                 class="cell"
                 type="is-success"
                 :disabled="disabledStateOfButtons.start"
-                >Начать</b-button
               >
+                Начать
+              </b-button>
               <b-button
                 v-else
                 @click="completeTalon()"
                 class="cell"
                 type="is-success"
                 :disabled="disabledStateOfButtons.complete"
-                >Завершить</b-button
               >
+                Завершить
+              </b-button>
               <b-button
                 class="cell"
                 type="is-warning is-light"
                 :disabled="disabledStateOfButtons.redirect"
-                >Переадресовать</b-button
               >
+                Переадресовать
+              </b-button>
               <b-button class="cell" type="is-info" @click="cardHelpModal">Помощь</b-button>
             </div>
           </div>
