@@ -54,6 +54,16 @@ function showNotification() {
     currentNotification.name = notif.name;
     currentNotification.location = notif.location;
     currentNotification.show = true;
+    fetch('http://localhost:8001/tts', {
+      method: 'POST',
+      body: JSON.stringify(notif),
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: '*/*',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
     setTimeout(() => {
       currentNotification.show = false;
     }, 10000);
