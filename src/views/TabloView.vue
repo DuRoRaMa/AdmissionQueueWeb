@@ -227,7 +227,7 @@ onMounted(() => {
               />
             </div>
           </div>
-          <div class="column" v-if="data.talons.length > talonsPerCol">
+          <div class="column">
             <div class="columns is-multiline is-gapless">
               <div class="column is-three-fifths">
                 <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
