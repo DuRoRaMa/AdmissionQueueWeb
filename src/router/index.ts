@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,6 +7,14 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
+      meta: {
+        auth: undefined
+      }
+    },
+    {
+      path: '/403',
+      name: 'Error 403',
+      component: () => import('../views/Exceptions/403View.vue'),
       meta: {
         auth: undefined
       }
@@ -40,7 +48,7 @@ const router = createRouter({
       name: 'operator_settings',
       component: () => import('../views/OperatorSettingsView.vue'),
       meta: {
-        auth: true
+        auth: ['Operators']
       }
     },
     {
@@ -48,7 +56,7 @@ const router = createRouter({
       name: 'operator',
       component: () => import('../views/OperatorView.vue'),
       meta: {
-        auth: true
+        auth: ['Operators']
       }
     },
     {
@@ -56,10 +64,10 @@ const router = createRouter({
       name: 'registrator',
       component: () => import('../views/RegistatorView.vue'),
       meta: {
-        auth: true
+        auth: ['Registrators']
       }
     }
   ]
-})
+});
 
-export default router
+export default router;

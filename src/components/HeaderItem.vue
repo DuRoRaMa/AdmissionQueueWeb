@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { useAuth } from 'vue-auth3';
+import { useAuth, useUser } from 'vue-auth3';
 import fefu_logo from '@/assets/FEFU_logo.svg';
+import { computed, ref, watch } from 'vue';
 
 const auth = useAuth();
+const user = useUser();
+const username = ref('');
+watch(user, () => {
+  if (user.value?.groups) {
+    username.value = user.value.username;
+  }
+});
 </script>
 <template>
   <b-navbar v-show="$route.name !== 'tablo'">
@@ -39,6 +47,9 @@ const auth = useAuth();
             >
               Профиль
             </b-navbar-item> -->
+            <p class="title is-5" style="margin-right: 50px; margin-top: 10px">
+              {{ user.username }}
+            </p>
             <a @click="auth.logout" class="button is-primary"> Выйти </a>
           </b-navbar-item>
         </div>

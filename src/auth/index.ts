@@ -1,34 +1,36 @@
-import { createAuth } from 'vue-auth3'
-import { defineAuthDriver } from 'vue-auth3/dist/chunk-QALVUXMO.mjs'
-import { defineHttpDriver } from 'vue-auth3/dist/chunk-3BTIPVYA.mjs'
-import router from '@/router'
-import { APIAxios } from '@/axios'
+import { createAuth } from 'vue-auth3';
+import { defineAuthDriver } from 'vue-auth3/dist/chunk-QALVUXMO.mjs';
+import { defineHttpDriver } from 'vue-auth3/dist/chunk-3BTIPVYA.mjs';
+import router from '@/router';
+import { APIAxios } from '@/axios';
 
 const axiosDriver = defineHttpDriver({
   request: APIAxios
-})
+});
 
 const authDriver = defineAuthDriver({
   request(auth: any, options: any, token: any) {
-    options.headers['Authorization'] = 'Bearer ' + token
+    options.headers['Authorization'] = 'Bearer ' + token;
 
-    return options
+    return options;
   },
 
   response(auth: any, res: any) {
-    const token = res.data.auth_token
+    const token = res.data.auth_token;
 
     if (token) {
-      const i = token.split(/Bearer:?\s?/i)
+      const i = token.split(/Bearer:?\s?/i);
 
-      return i[i.length > 1 ? 1 : 0].trim()
+      return i[i.length > 1 ? 1 : 0].trim();
     }
 
-    return null
+    return null;
   }
-})
+});
 const auth = createAuth({
+  rolesKey: 'groups',
   tokenDefaultKey: 'auth_token',
+  forbiddenRedirect: '/403',
   loginData: {
     url: '/auth/token/login',
     method: 'POST',
@@ -47,7 +49,7 @@ const auth = createAuth({
     enabled: false
   },
   fetchData: {
-    url: 'auth/users/me',
+    url: 'account/user/',
     method: 'GET'
   },
   plugins: {
@@ -57,6 +59,6 @@ const auth = createAuth({
     auth: authDriver,
     http: axiosDriver
   }
-})
+});
 
-export default auth
+export default auth;

@@ -54,6 +54,16 @@ function showNotification() {
     currentNotification.name = notif.name;
     currentNotification.location = notif.location;
     currentNotification.show = true;
+    fetch('http://localhost:8001/tts', {
+      method: 'POST',
+      body: JSON.stringify(notif),
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: '*/*',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
     setTimeout(() => {
       currentNotification.show = false;
     }, 10000);
@@ -72,7 +82,9 @@ watch(
           location: log.createdBy.operatorSettings!.location.name
         };
         queueForNotification.push(talon);
-        data.talons.unshift(talon);
+        if (log.id > data.lastTalonLogId) {
+          data.talons.unshift(talon);
+        }
         break;
       case 'Completed':
         data.talons.splice(
@@ -116,8 +128,13 @@ watch(data, () => {
   data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
 });
 onMounted(() => {
-  getAPIData('/queue/operator/info', auth, (response) => {
-    for (const loc of response.data.locations) {
+  fetch(import.meta.env.VITE_API_URL + '/queue/info', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }).then(async (response) => {
+    for (const loc of (await response.json()).locations) {
       if (loc.settings !== null) {
         active_locations.push(loc.name);
       }
@@ -215,7 +232,7 @@ onMounted(() => {
               />
             </div>
           </div>
-          <div class="column" v-if="data.talons.length > talonsPerCol">
+          <div class="column">
             <div class="columns is-multiline is-gapless">
               <div class="column is-three-fifths">
                 <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
