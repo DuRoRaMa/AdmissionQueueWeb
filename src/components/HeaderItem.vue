@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { useAuth, useUser } from 'vue-auth3';
 import fefu_logo from '@/assets/FEFU_logo.svg';
+import { computed, ref, watch } from 'vue';
 
 const auth = useAuth();
 const user = useUser();
+const username = ref('');
+watch(user, () => {
+  if (user.value?.groups) {
+    username.value = user.value.username;
+  }
+});
 </script>
 <template>
   <b-navbar v-show="$route.name !== 'tablo'">

@@ -4,13 +4,21 @@ import { useUser, useAuth } from 'vue-auth3';
 const auth = useAuth();
 const user = useUser();
 const roles = reactive({ Operators: false, Registrators: false, Admins: false });
-onMounted(() => {
-  if (auth.check() && user.value) {
-    user.value.groups.forEach((x: string) => {
-      roles[x] = true;
-    });
-  }
-});
+watch(
+  user,
+  () => {
+    if (user.value?.groups) {
+      user.value.groups.forEach((x: string) => {
+        roles[x] = true;
+      });
+    } else {
+      roles.Registrators = false;
+      roles.Operators = false;
+      roles.Admins = false;
+    }
+  },
+  { immediate: true }
+);
 </script>
 <template>
   <section class="hero is-large container">
