@@ -102,7 +102,7 @@ function registerTalon() {
   });
 }
 onMounted(() => {
-  getAPIData('/queue/operator/info', auth, (response) => {
+  getAPIData('/queue/info', auth, (response) => {
     Object.assign(info, response.data);
   });
 });

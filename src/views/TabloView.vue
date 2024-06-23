@@ -128,8 +128,13 @@ watch(data, () => {
   data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
 });
 onMounted(() => {
-  getAPIData('/queue/operator/info', auth, (response) => {
-    for (const loc of response.data.locations) {
+  fetch(import.meta.env.VITE_API_URL + '/queue/info', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }).then(async (response) => {
+    for (const loc of (await response.json()).locations) {
       if (loc.settings !== null) {
         active_locations.push(loc.name);
       }
