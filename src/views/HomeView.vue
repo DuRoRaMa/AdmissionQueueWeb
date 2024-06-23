@@ -31,7 +31,7 @@ onMounted(() => {
           :to="{ name: 'registrator' }"
           class="column is-large is-primary"
         >
-          Регистратор
+          Ресепшен
         </b-button>
       </div>
     </div>
