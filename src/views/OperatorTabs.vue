@@ -8,8 +8,18 @@ import { useAuth } from 'vue-auth3';
 
 const tab = ref('Settings');
 const baseTabs = [
-  { id: 'Settings', label: 'Настройки', component: OperatorSettingsView },
-  { id: 'Panel', label: 'Панель', component: OperatorPanelView }
+  {
+    id: 'Settings',
+    label: 'Настройки',
+    icon: 'cog',
+    component: OperatorSettingsView
+  },
+  {
+    id: 'Panel',
+    label: 'Панель',
+    icon: 'home',
+    component: OperatorPanelView
+  }
 ];
 const auth = useAuth();
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
@@ -32,7 +42,13 @@ watch(tab, () => {
 </script>
 <template>
   <b-tabs type="is-boxed" v-model="tab">
-    <b-tab-item v-for="item in baseTabs" :key="item.id" :value="item.id" :label="item.label">
+    <b-tab-item
+      v-for="item in baseTabs"
+      :key="item.id"
+      :value="item.id"
+      :icon="item.icon"
+      :label="item.label"
+    >
       <component :is="item.component"></component>
     </b-tab-item>
   </b-tabs>
