@@ -44,17 +44,9 @@ const router = createRouter({
       }
     },
     {
-      path: '/queue/operator/settings',
-      name: 'operator_settings',
-      component: () => import('../views/OperatorSettingsView.vue'),
-      meta: {
-        auth: ['Operators']
-      }
-    },
-    {
       path: '/queue/operator',
       name: 'operator',
-      component: () => import('../views/OperatorView.vue'),
+      component: () => import('../views/OperatorTabs.vue'),
       meta: {
         auth: ['Operators']
       }

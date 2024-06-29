@@ -20,6 +20,7 @@ const dataLength = computed(() => {
   return info.locations.length != 0;
 });
 onMounted(() => {
+  console.log('Settings loaded');
   getAPIData('/queue/operator/settings', auth, (response) => {
     Object.assign(currentState, response.data);
 
@@ -57,7 +58,6 @@ function saveSettings() {
       <div class="columns">
         <div class="column is-one-quarter"></div>
         <div class="column">
-          <p class="title">Настройки оператора</p>
           <b-field label="Рабочее место">
             <b-select v-if="dataLength" v-model="currentState.location" placeholder="Выберите">
               <option :value="null" :key="0">Освободить рабочее место</option>
@@ -85,7 +85,6 @@ function saveSettings() {
           </div>
           <div class="buttons">
             <b-button @click="saveSettings" :loading="loadingSave">Сохранить</b-button>
-            <b-button tag="router-link" :to="{ name: 'operator' }">Продолжить</b-button>
           </div>
         </div>
         <div class="column is-one-quarter"></div>

@@ -27,7 +27,7 @@ watch(
         <b-button
           v-show="roles.Operators"
           tag="router-link"
-          :to="{ name: 'operator_settings' }"
+          :to="{ name: 'operator' }"
           class="column is-large is-primary"
         >
           Оператор

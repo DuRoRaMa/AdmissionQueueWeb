@@ -12,7 +12,6 @@ import { useStopwatch } from 'vue-timer-hook';
 const stopWatch = useStopwatch(0, false);
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
-const router = useRouter();
 let currentSettings: OperatorSettings | null = null;
 let currentTalon = ref({});
 let currentTalonId = ref(-1);
@@ -54,7 +53,7 @@ watch(
         disabledStateOfButtons.value.next = true;
         disabledStateOfButtons.value.notify = false;
         disabledStateOfButtons.value.start = false;
-        disabledStateOfButtons.value.redirect = false;
+        disabledStateOfButtons.value.redirect = true;
         disabledStateOfButtons.value.cancel = false;
         break;
       case 'Canceled':
@@ -71,7 +70,8 @@ watch(
         disabledStateOfButtons.value.next = true;
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.complete = false;
-        disabledStateOfButtons.value.redirect = false;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = false;
         break;
       case 'Completed':
         disabledStateOfButtons.value.complete = true;
@@ -176,21 +176,6 @@ function cardHelpModal() {
   });
 }
 onMounted(() => {
-  getAPIData('/queue/operator/settings', auth, (response) => {
-    currentSettings = response.data as OperatorSettings;
-    if (currentSettings.automatic_assignment) {
-      disabledStateOfButtons.value.next = true;
-    }
-    if (currentSettings.location === null || currentSettings.purposes.length === 0) {
-      $buefy.notification.open({
-        message: `Настройки оператора должны быть заполнены`,
-        duration: 5000,
-        type: 'is-warning',
-        pauseOnHover: true
-      });
-      router.push({ name: 'operator_settings' });
-    }
-  });
   getAPIData(
     '/queue/operator/talon/action',
     auth,
@@ -207,7 +192,6 @@ onMounted(() => {
 <template>
   <div class="wrapper columns">
     <div class="column">
-      <p class="title">Панель оператора</p>
       <div class="columns">
         <div class="column is-one-third">
           <div class="fixed-grid has-3-cols">
@@ -293,7 +277,9 @@ onMounted(() => {
           <div>Цель:</div>
           <div>Комментарии:</div>
         </div>
-        <div>Время обработки: {{ stopWatch.minutes }}:{{ stopWatch.seconds }}</div>
+        <div>
+          Время обработки: {{ stopWatch.hours }}:{{ stopWatch.minutes }}:{{ stopWatch.seconds }}
+        </div>
       </div>
     </div>
   </div>
