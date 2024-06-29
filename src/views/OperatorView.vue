@@ -7,6 +7,9 @@ import type { OperatorSettings } from '@/types';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_TALON_BY_ID } from '@/queries';
 import HelpModalForm from '@/components/HelpModalForm.vue';
+import { useStopwatch } from 'vue-timer-hook';
+
+const stopWatch = useStopwatch(0, false);
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
 const router = useRouter();
@@ -41,6 +44,10 @@ watch(
     switch (newStatus) {
       case 'NOT_ASSIGNED':
         disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.notify = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = true;
         if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true;
         break;
       case 'Assigned':
@@ -51,9 +58,16 @@ watch(
         disabledStateOfButtons.value.cancel = false;
         break;
       case 'Canceled':
-        disabledStateOfButtons.value.cancel = false;
+        disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.notify = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = true;
         break;
       case 'Started':
+        const started = new Date(currentTalon.value.logs.at(-1).createdAt);
+        const offset = (new Date() - started) / 1000;
+        stopWatch.reset(offset, true);
         disabledStateOfButtons.value.next = true;
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.complete = false;
@@ -109,6 +123,7 @@ function cancelTalon() {
     (response) => {
       if (response.status === 200) {
         currentTalon.value = {};
+        stopWatch.reset(0, false);
       }
     },
     {
@@ -144,6 +159,7 @@ function completeTalon() {
     (response) => {
       if (response.status === 200) {
         currentTalon.value = {};
+        stopWatch.reset(0, false);
       }
     },
     {
@@ -277,7 +293,7 @@ onMounted(() => {
           <div>Цель:</div>
           <div>Комментарии:</div>
         </div>
-        <!-- <input type="text" v-model="currentTalonId" /> -->
+        <div>Время обработки: {{ stopWatch.minutes }}:{{ stopWatch.seconds }}</div>
       </div>
     </div>
   </div>
