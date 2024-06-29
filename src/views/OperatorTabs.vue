@@ -2,6 +2,7 @@
 import { getAPIData } from '@/axios';
 import OperatorPanelView from './OperatorTabs/OperatorPanelView.vue';
 import OperatorSettingsView from './OperatorTabs/OperatorSettingsView.vue';
+import OperatorStatsView from './OperatorTabs/OperatorStatsView.vue';
 import { ref, h, watch, getCurrentInstance } from 'vue';
 import type { OperatorSettings } from '@/types';
 import { useAuth } from 'vue-auth3';
@@ -9,16 +10,22 @@ import { useAuth } from 'vue-auth3';
 const tab = ref('Settings');
 const baseTabs = [
   {
-    id: 'Settings',
-    label: 'Настройки',
-    icon: 'cog',
-    component: OperatorSettingsView
-  },
-  {
     id: 'Panel',
     label: 'Панель',
     icon: 'home',
     component: OperatorPanelView
+  },
+  {
+    id: 'Stats',
+    label: 'Показатели',
+    icon: 'chart-pie',
+    component: OperatorStatsView
+  },
+  {
+    id: 'Settings',
+    label: 'Настройки',
+    icon: 'cog',
+    component: OperatorSettingsView
   }
 ];
 const auth = useAuth();
