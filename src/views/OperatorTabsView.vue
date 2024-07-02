@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { getAPIData } from '@/axios';
-import OperatorPanelView from './OperatorTabs/OperatorPanelView.vue';
-import OperatorSettingsView from './OperatorTabs/OperatorSettingsView.vue';
-import OperatorStatsView from './OperatorTabs/OperatorStatsView.vue';
+import OperatorPanelView from './OperatorTabs/PanelTab.vue';
+import OperatorSettingsView from './OperatorTabs/SettingsTab.vue';
+import OperatorStatsView from './OperatorTabs/StatsTab.vue';
 import { ref, h, watch, getCurrentInstance } from 'vue';
 import type { OperatorSettings } from '@/types';
 import { useAuth } from 'vue-auth3';

@@ -2,7 +2,6 @@
 import { getAPIData, postAPIData } from '@/axios';
 import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
 import { useAuth } from 'vue-auth3';
-import { useRouter } from 'vue-router';
 import type { OperatorSettings } from '@/types';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_TALON_BY_ID } from '@/queries';

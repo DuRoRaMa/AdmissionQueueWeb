@@ -46,7 +46,7 @@ const router = createRouter({
     {
       path: '/queue/operator',
       name: 'operator',
-      component: () => import('../views/OperatorTabs.vue'),
+      component: () => import('../views/OperatorTabsView.vue'),
       meta: {
         auth: ['Operators']
       }
@@ -54,7 +54,7 @@ const router = createRouter({
     {
       path: '/queue/registrator',
       name: 'registrator',
-      component: () => import('../views/RegistatorView.vue'),
+      component: () => import('../views/RegistratorTabsView.vue'),
       meta: {
         auth: ['Registrators']
       }
