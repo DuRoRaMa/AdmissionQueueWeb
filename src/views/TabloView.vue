@@ -101,7 +101,7 @@ watch(
       default:
         break;
     }
-    data.lastTalonLogId = log.id;
+    if (log.id > data.lastTalonLogId) data.lastTalonLogId = log.id;
   },
   { immediate: false }
 );
