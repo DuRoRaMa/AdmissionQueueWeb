@@ -1,38 +1,33 @@
 import gql from 'graphql-tag';
 
 export const TALONS = gql`
-  query ($limit: Int, $offset: Int) {
-    historyTalons(pagination: { limit: $limit, offset: $offset }) {
+  query ($pagination: OffsetPaginationInput, $order: HistoryTalonOrder) {
+    historyTalons(pagination: $pagination, order: $order) {
       id
       name
+      createdAt
       logs {
         action
+        createdAt
         createdBy {
           username
-          operatorSettings {
-            location {
-              name
-            }
-          }
         }
       }
     }
+    countHistoryTalons
   }
 `;
 interface tabloTalonLog {
   id: number;
   action: string;
+  createdAt: string;
   createdBy: {
     username: string;
-    operatorSettings?: {
-      location: {
-        name: string;
-      };
-    };
   };
 }
 export interface HistoryTalon {
   id: number;
   name: string;
+  createdAt: string;
   logs: tabloTalonLog[];
 }

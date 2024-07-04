@@ -96,7 +96,11 @@ async function cancelTalon(id: any) {
           {{ new Date(props.row.createdAt).toLocaleTimeString('ru-ru') }}
         </b-table-column>
         <b-table-column label="" v-slot="props">
-          <b-button @click="cancelTalon(props.row.id)" :disabled="disabled[props.row.id]">
+          <b-button
+            class="is-danger"
+            @click="cancelTalon(props.row.id)"
+            :disabled="disabled[props.row.id]"
+          >
             Отменить
           </b-button>
         </b-table-column>
