@@ -9,6 +9,10 @@ const chartOptions = {
   chart: {
     id: 'area-count-purposes'
   },
+  title: {
+    text: 'Кол-во успешно обработанных талонов',
+    align: 'center'
+  },
   dataLabels: {
     enabled: false
   },
