@@ -58,6 +58,14 @@ const router = createRouter({
       meta: {
         auth: ['Registrators']
       }
+    },
+    {
+      path: '/queue/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      meta: {
+        auth: ['Admins']
+      }
     }
   ]
 });
