@@ -101,13 +101,14 @@ function startTalon() {
   disabledStateOfButtons.value.start = true;
   postAPIData(
     '/queue/operator/talon/action',
-    null,
+    {},
     auth,
     (response) => {
       if (response.status === 200) {
         talonById.refetch();
       }
     },
+    () => {},
     {
       action: 'start'
     }
@@ -117,7 +118,7 @@ function cancelTalon() {
   disabledStateOfButtons.value.complete = true;
   postAPIData(
     '/queue/operator/talon/action',
-    null,
+    {},
     auth,
     (response) => {
       if (response.status === 200) {
@@ -125,6 +126,7 @@ function cancelTalon() {
         stopWatch.reset(0, false);
       }
     },
+    () => {},
     {
       action: 'cancel'
     }
@@ -134,7 +136,7 @@ function notifyTalon() {
   disabledStateOfButtons.value.complete = true;
   postAPIData(
     '/queue/operator/talon/action',
-    null,
+    {},
     auth,
     (response) => {
       $buefy.notification.open({
@@ -144,6 +146,7 @@ function notifyTalon() {
         pauseOnHover: false
       });
     },
+    () => {},
     {
       action: 'notify'
     }
@@ -153,7 +156,7 @@ function completeTalon() {
   disabledStateOfButtons.value.complete = true;
   postAPIData(
     '/queue/operator/talon/action',
-    null,
+    {},
     auth,
     (response) => {
       if (response.status === 200) {
@@ -161,6 +164,7 @@ function completeTalon() {
         stopWatch.reset(0, false);
       }
     },
+    () => {},
     {
       action: 'complete'
     }

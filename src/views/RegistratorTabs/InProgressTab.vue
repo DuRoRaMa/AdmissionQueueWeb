@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { getAPIData, postAPIData } from '@/axios';
-import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'vue';
-import { useAuth } from 'vue-auth3';
+import { reactive, ref } from 'vue';
 import { useLazyQuery } from '@vue/apollo-composable';
-import { TABLO_STATUS, type tabloTalons } from '@/queries/tabloTalons';
+import { TABLO_STATUS } from '@/queries/tabloTalons';
 
-const auth = useAuth();
-const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const tablo_status = useLazyQuery(TABLO_STATUS, {}, { fetchPolicy: 'network-only' });
 let data = reactive([] as any[]);
 let num = 1;
@@ -25,14 +21,18 @@ async function updateTable() {
 
   for (const talon of res.tabloTalons) {
     let last_log = talon.logs.filter((x: any) => x.action === 'Assigned').at(-1);
+    let status = [...talon.logs].sort((a, b) => Number(a.id) - Number(b.id)).at(-1).action;
+
     ndata.push({
       id: talon.id,
       name: talon?.name,
       location: last_log.createdBy.operatorSettings.location?.name || '-',
-      operator: last_log.createdBy.username
+      operator: last_log.createdBy.username,
+      action: status
     });
   }
   data.push(...ndata);
+  data.sort((a, b) => a.id - b.id);
   lastTimeUpdated.value = new Date();
 }
 function blackColorClass(row, column) {
@@ -86,6 +86,15 @@ function blackColorClass(row, column) {
           sortable
         >
           {{ props.row.operator }}
+        </b-table-column>
+        <b-table-column
+          field="action"
+          label="Статус"
+          :td-attrs="blackColorClass"
+          v-slot="props"
+          sortable
+        >
+          {{ props.row.action }}
         </b-table-column>
         <template #empty>
           <div class="has-text-centered" style="color: black">Нет данных</div>

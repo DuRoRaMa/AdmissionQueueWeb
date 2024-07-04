@@ -1,82 +1,82 @@
 <script setup lang="ts">
-import { getAPIData, postAPIData } from '@/axios'
-import { getCurrentInstance, onMounted, reactive, ref } from 'vue'
-import type { Auth } from 'vue-auth3'
+import { getAPIData, postAPIData } from '@/axios';
+import { getCurrentInstance, onMounted, reactive, ref } from 'vue';
+import type { Auth } from 'vue-auth3';
 
 interface Helper {
-  id: number
-  sector: string
+  id: number;
+  sector: string;
   user: {
-    id: number
-    username: string
-    first_name: string
-    last_name: string
-  }
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
 }
 interface Theme {
-  id: number
-  name: string
-  description: string
+  id: number;
+  name: string;
+  description: string;
 }
 interface Info {
-  themes: Theme[]
-  helpers: Helper[]
+  themes: Theme[];
+  helpers: Helper[];
 }
 const { auth } = defineProps({
   auth: {
     type: Object as () => Auth,
     required: true
   }
-})
+});
 const priorities = [
   { id: 'Low', name: 'Низкий' },
   { id: 'Medium', name: 'Средний' },
   { id: 'High', name: 'Высокий' }
-]
-const info = ref<Info>({} as Info)
-const currentState = reactive({ helper: null, theme: null, priority: null, text: '' })
-const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy
+];
+const info = ref<Info>({} as Info);
+const currentState = reactive({ helper: null, theme: null, priority: null, text: '' });
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 // const $emit = getCurrentInstance()?.appContext.config.globalProperties.$emit
 onMounted(() => {
   getAPIData('/helper/info', auth, (response) => {
-    info.value = response.data
-  })
-})
+    info.value = response.data;
+  });
+});
 function validateHelpRequest() {
   if (currentState.helper == null) {
     $buefy.toast.open({
       message: 'Выберите старшего',
       type: 'is-danger'
-    })
-    return false
+    });
+    return false;
   }
   if (currentState.priority == null) {
     $buefy.toast.open({
       message: 'Выберите срочность',
       type: 'is-danger'
-    })
-    return false
+    });
+    return false;
   }
   if (currentState.theme == null) {
     $buefy.toast.open({
       message: 'Выберите тему',
       type: 'is-danger'
-    })
-    return false
+    });
+    return false;
   }
-  return true
+  return true;
 }
 function sendHelpRequest() {
-  if (!validateHelpRequest()) return false
+  if (!validateHelpRequest()) return false;
   postAPIData('/helper/request', currentState, auth, (response) => {
     $buefy.notification.open({
       message: `Запрос отправлен!`,
       duration: 5000,
       type: 'is-success',
       pauseOnHover: true
-    })
-  })
-  return true
+    });
+  });
+  return true;
 }
 </script>
 

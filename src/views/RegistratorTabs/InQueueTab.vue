@@ -3,11 +3,13 @@ import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'v
 import { useAuth } from 'vue-auth3';
 import { useLazyQuery } from '@vue/apollo-composable';
 import { IN_QUEUE_TALONS, type in_queue_talon } from '@/queries/inQueueTalons';
+import { postAPIData } from '@/axios';
 
 const auth = useAuth();
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const in_queue_talons = useLazyQuery(IN_QUEUE_TALONS, {}, { fetchPolicy: 'network-only' });
 let data = reactive([] as in_queue_talon[]);
+const disabled = reactive({} as { [key: number]: boolean });
 let num = 1;
 const lastTimeUpdated = ref<Date>();
 function onSort(field, order) {
@@ -21,10 +23,37 @@ async function updateTable() {
     res = (await in_queue_talons.refetch())?.data;
   }
   Object.assign(data, res.inQueueTalons);
+  data.forEach((x) => (disabled[x.id] = false));
+  data.sort((a, b) => a.id - b.id);
   lastTimeUpdated.value = new Date();
 }
 function blackColorClass(row, column) {
   return { style: { color: 'black' } };
+}
+async function cancelTalon(id: any) {
+  disabled[id] = true;
+  postAPIData(
+    '/queue/registrator/talon/cancel',
+    {},
+    auth,
+    (response) => {
+      $buefy.notification.open({
+        message: response.data.detail,
+        duration: 3000,
+        type: 'is-success',
+        pauseOnHover: false
+      });
+    },
+    (error) => {
+      $buefy.notification.open({
+        message: error.response?.data?.detail,
+        duration: 3000,
+        type: 'is-danger',
+        pauseOnHover: false
+      });
+    },
+    { id: id }
+  );
 }
 </script>
 <template>
@@ -65,6 +94,11 @@ function blackColorClass(row, column) {
           sortable
         >
           {{ new Date(props.row.createdAt).toLocaleTimeString('ru-ru') }}
+        </b-table-column>
+        <b-table-column label="" v-slot="props">
+          <b-button @click="cancelTalon(props.row.id)" :disabled="disabled[props.row.id]">
+            Отменить
+          </b-button>
         </b-table-column>
         <template #empty>
           <div class="has-text-centered" style="color: black">Нет данных</div>
