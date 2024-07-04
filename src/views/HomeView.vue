@@ -4,6 +4,11 @@ import { useUser, useAuth } from 'vue-auth3';
 const auth = useAuth();
 const user = useUser();
 const roles = reactive({ Operators: false, Registrators: false, Admins: false });
+const buttons = reactive([
+  { if: 'Operators', name: 'operator', text: 'Оператор' },
+  { if: 'Registrators', name: 'registrator', text: 'Ресепшен' },
+  { if: 'Admins', name: 'dashboard', text: 'Дашборд' }
+]);
 watch(
   user,
   () => {
@@ -25,21 +30,15 @@ watch(
     <div class="hero-body">
       <div class="columns">
         <b-button
-          v-show="roles.Operators"
+          v-for="button in buttons"
+          :key="button.name"
+          v-show="roles[button.if]"
           tag="router-link"
-          :to="{ name: 'operator' }"
+          :to="{ name: button.name }"
           class="column is-large is-primary"
+          style="margin-right: 20px"
         >
-          Оператор
-        </b-button>
-        <div class="column is-0"></div>
-        <b-button
-          v-show="roles.Registrators"
-          tag="router-link"
-          :to="{ name: 'registrator' }"
-          class="column is-large is-primary"
-        >
-          Ресепшен
+          {{ button.text }}
         </b-button>
       </div>
     </div>
