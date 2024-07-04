@@ -6,7 +6,7 @@ import HistoryTab from './RegistratorTabs/HistoryTab.vue';
 import { ref, getCurrentInstance } from 'vue';
 import { useAuth } from 'vue-auth3';
 
-const tab = ref('InProgress');
+const tab = ref('Panel');
 const baseTabs = [
   {
     id: 'Panel',
