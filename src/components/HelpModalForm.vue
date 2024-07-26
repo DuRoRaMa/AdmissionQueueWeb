@@ -38,9 +38,18 @@ const currentState = reactive({ helper: null, theme: null, priority: null, text:
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 // const $emit = getCurrentInstance()?.appContext.config.globalProperties.$emit
 onMounted(() => {
-  getAPIData('/helper/info', auth, (response) => {
-    info.value = response.data;
-  });
+  getAPIData(
+    '/helper/info',
+    auth,
+    (response) => {
+      info.value = response.data;
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    }
+  );
 });
 function validateHelpRequest() {
   if (currentState.helper == null) {

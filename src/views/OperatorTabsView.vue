@@ -32,18 +32,27 @@ const auth = useAuth();
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 watch(tab, () => {
   if (tab.value == 'Panel') {
-    getAPIData('/queue/operator/settings', auth, (response) => {
-      const currentSettings = response.data as OperatorSettings;
-      if (currentSettings.location === null || currentSettings.purposes.length === 0) {
-        $buefy.notification.open({
-          message: `Настройки оператора должны быть заполнены`,
-          duration: 5000,
-          type: 'is-warning',
-          pauseOnHover: true
+    getAPIData(
+      '/queue/operator/settings',
+      auth,
+      (response) => {
+        const currentSettings = response.data as OperatorSettings;
+        if (currentSettings.location === null || currentSettings.purposes.length === 0) {
+          $buefy.notification.open({
+            message: `Настройки оператора должны быть заполнены`,
+            duration: 5000,
+            type: 'is-warning',
+            pauseOnHover: true
+          });
+          tab.value = 'Settings';
+        }
+      },
+      (error) => {
+        $buefy.toast.open({
+          message: error
         });
-        tab.value = 'Settings';
       }
-    });
+    );
   }
 });
 </script>

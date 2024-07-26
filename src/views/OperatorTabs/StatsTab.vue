@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { getAPIData } from '@/axios';
-import { reactive } from 'vue';
+import { getCurrentInstance, reactive } from 'vue';
 import { useAuth } from 'vue-auth3';
 
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
 const series = reactive([]);
 const chartOptions = {
@@ -40,10 +41,19 @@ const chartOptions = {
   noData: { text: 'Нет данных' }
 };
 function update() {
-  getAPIData('/queue/operator/stats', auth, (response) => {
-    series.splice(0, series.length);
-    Object.assign(series, response.data);
-  });
+  getAPIData(
+    '/queue/operator/stats',
+    auth,
+    (response) => {
+      series.splice(0, series.length);
+      Object.assign(series, response.data);
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    }
+  );
 }
 </script>
 <template>

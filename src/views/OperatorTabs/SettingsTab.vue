@@ -21,23 +21,40 @@ const dataLength = computed(() => {
 });
 onMounted(() => {
   console.log('Settings loaded');
-  getAPIData('/queue/operator/settings', auth, (response) => {
-    Object.assign(currentState, response.data);
-
-    getAPIData('/queue/info', auth, (response) => {
-      Object.assign(info, response.data);
-      for (let loc_i in info.locations) {
-        if (
-          info.locations[loc_i].settings !== null &&
-          currentState.location !== info.locations[loc_i].id
-        ) {
-          info.locations[loc_i].disabled = true;
-        } else {
-          info.locations[loc_i].disabled = false;
+  getAPIData(
+    '/queue/operator/settings',
+    auth,
+    (response) => {
+      Object.assign(currentState, response.data);
+      getAPIData(
+        '/queue/info',
+        auth,
+        (response) => {
+          Object.assign(info, response.data);
+          for (let loc_i in info.locations) {
+            if (
+              info.locations[loc_i].settings !== null &&
+              currentState.location !== info.locations[loc_i].id
+            ) {
+              info.locations[loc_i].disabled = true;
+            } else {
+              info.locations[loc_i].disabled = false;
+            }
+          }
+        },
+        (error) => {
+          $buefy.toast.open({
+            message: error
+          });
         }
-      }
-    });
-  });
+      );
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    }
+  );
 });
 function saveSettings() {
   loadingSave.value = true;
