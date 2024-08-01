@@ -6,15 +6,14 @@ export function getAPIData(
   url: string,
   auth: Auth,
   func: (r: AxiosResponse) => void,
+  error_func: (r: AxiosError) => void = () => {},
   params: any = {}
 ) {
   APIAxios.get(url, {
     headers: { Authorization: 'Bearer ' + auth.token() },
     params: params
   })
-    .catch((err) => {
-      console.error(err);
-    })
+    .catch(error_func)
     .then((response) => {
       if (response === undefined) return;
       func(response);
@@ -57,9 +56,7 @@ export function postAPIData(
     headers: { Authorization: 'Bearer ' + auth.token() },
     params: params
   })
-    .catch((err: AxiosError) => {
-      error_func(err);
-    })
+    .catch(error_func)
     .then((response) => {
       if (response === undefined) return;
       func(response);

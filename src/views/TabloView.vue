@@ -5,10 +5,7 @@ import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
 import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
 import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
-import { getAPIData } from '@/axios';
-import { useAuth } from 'vue-auth3';
 
-const auth = useAuth();
 const talonsPerCol = 7;
 interface Talon {
   id: number;

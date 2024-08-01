@@ -2,29 +2,43 @@
 import { getAPIData } from '@/axios';
 import TotalTalonPurposes from '@/components/DashboardPage/TotalTalonsPurposes.vue';
 import RatingOperatorByTalonPurposes from '@/components/DashboardPage/RatingOperatorByTalonPurposes.vue';
-import { onMounted, reactive, ref, watch } from 'vue';
+import { getCurrentInstance, onMounted, reactive, ref, watch } from 'vue';
 import { useAuth } from 'vue-auth3';
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
 const data = reactive({});
 const dates = ref([new Date(), new Date()]);
+const needUpdate = ref(false);
 function update() {
+  let d1: Date = new Date(dates.value[0].getTime());
+  let d2: Date = new Date(dates.value[1].getTime());
+  d1.setHours(0, 0, 0, 0);
+  d2.setHours(23, 59, 59, 999);
   getAPIData(
     '/queue/dashboard',
     auth,
     (response) => {
       Object.assign(data, response.data);
     },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    },
     {
-      start: dates.value[0],
-      end: dates.value[1]
+      start: d1,
+      end: d2
     }
   );
+  needUpdate.value = false;
 }
 onMounted(() => {
-  dates.value[0].setHours(0, 0, 0, 0);
-  dates.value[1].setHours(23, 59, 59, 999);
   update();
-  watch(dates, update);
+  watch(needUpdate, (newValue, oldValue) => {
+    if (newValue) {
+      update();
+    }
+  });
 });
 </script>
 <template>
@@ -33,13 +47,13 @@ onMounted(() => {
       placeholder="Нажмите, чтобы выбрать"
       v-model="dates"
       @range-end="
-        (value) => {
-          return value.setHours(23, 59, 59, 999);
+        (date: Date) => {
+          needUpdate = true;
+          return date;
         }
       "
       range
-    >
-    </b-datepicker>
+    />
   </b-field>
   <TotalTalonPurposes :data="data.totalTalonPurposes" :talon_purposes="data.TalonPurposes" />
   <RatingOperatorByTalonPurposes :data="data.ratingOperatorByTalonPurposes" />

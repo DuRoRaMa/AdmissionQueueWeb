@@ -6,14 +6,18 @@ import type { OperatorSettings } from '@/types';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_TALON_BY_ID } from '@/queries';
 import HelpModalForm from '@/components/HelpModalForm.vue';
+import ConfirmNewTalonForm from '@/components/OperatorPage/ConfirmNewTalonForm.vue';
 import { useStopwatch } from 'vue-timer-hook';
+import { useOperatorTalonStore } from '@/stores/OperatorTalonStore';
+import { storeToRefs } from 'pinia';
 
 const stopWatch = useStopwatch(0, false);
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
+const operatorTalonStore = useOperatorTalonStore();
+const { currentTalonId } = storeToRefs(operatorTalonStore);
 let currentSettings: OperatorSettings | null = null;
-let currentTalon = ref({});
-let currentTalonId = ref(-1);
+const currentTalon = ref({});
 const enabledTalonById = ref(false);
 const talonStatus = computed(() => {
   if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
@@ -23,6 +27,7 @@ let disabledStateOfButtons = ref({
   next: true,
   notify: true,
   cancel: true,
+  new: false,
   start: true,
   complete: true,
   redirect: true
@@ -42,6 +47,7 @@ watch(
     switch (newStatus) {
       case 'NOT_ASSIGNED':
         disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.new = false;
         disabledStateOfButtons.value.notify = true;
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.redirect = true;
@@ -50,6 +56,7 @@ watch(
         break;
       case 'Assigned':
         disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.new = true;
         disabledStateOfButtons.value.notify = false;
         disabledStateOfButtons.value.start = false;
         disabledStateOfButtons.value.redirect = true;
@@ -57,6 +64,7 @@ watch(
         break;
       case 'Canceled':
         disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.new = false;
         disabledStateOfButtons.value.notify = true;
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.redirect = true;
@@ -67,10 +75,12 @@ watch(
         const offset = (new Date() - started) / 1000;
         stopWatch.reset(offset, true);
         disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.new = true;
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.complete = false;
         disabledStateOfButtons.value.redirect = true;
         disabledStateOfButtons.value.cancel = false;
+        disabledStateOfButtons.value.notify = true;
         break;
       case 'Completed':
         disabledStateOfButtons.value.complete = true;
@@ -88,11 +98,20 @@ function getNextTalon() {
     auth,
     (response) => {
       if (response.data.id) {
-        currentTalonId.value = response.data.id;
+        operatorTalonStore.setCurrentTalonId(response.data.id);
         enabledTalonById.value = true;
       } else {
         disabledStateOfButtons.value.next = false;
+        $buefy.toast.open({
+          message: 'В очереди нет талонов'
+        });
       }
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.next = false;
     },
     { action: 'next' }
   );
@@ -108,7 +127,12 @@ function startTalon() {
         talonById.refetch();
       }
     },
-    () => {},
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.start = false;
+    },
     {
       action: 'start'
     }
@@ -126,14 +150,19 @@ function cancelTalon() {
         stopWatch.reset(0, false);
       }
     },
-    () => {},
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.cancel = false;
+    },
     {
       action: 'cancel'
     }
   );
 }
 function notifyTalon() {
-  disabledStateOfButtons.value.complete = true;
+  disabledStateOfButtons.value.notify = true;
   postAPIData(
     '/queue/operator/talon/action',
     {},
@@ -145,8 +174,14 @@ function notifyTalon() {
         type: 'is-success',
         pauseOnHover: false
       });
+      disabledStateOfButtons.value.notify = false;
     },
-    () => {},
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.notify = false;
+    },
     {
       action: 'notify'
     }
@@ -164,11 +199,24 @@ function completeTalon() {
         stopWatch.reset(0, false);
       }
     },
-    () => {},
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.complete = false;
+    },
     {
       action: 'complete'
     }
   );
+}
+function getNewTalon() {
+  $buefy.modal.open({
+    component: ConfirmNewTalonForm,
+    props: { auth },
+    hasModalCard: true,
+    trapFocus: true
+  });
 }
 function cardHelpModal() {
   $buefy.modal.open({
@@ -178,31 +226,39 @@ function cardHelpModal() {
     trapFocus: true
   });
 }
-onMounted(() => {
+function getCurrentTalon() {
+  console.log('getCurrentTalon');
+
   getAPIData(
     '/queue/operator/talon/action',
     auth,
     (response) => {
       if (response.data.id) {
-        currentTalonId.value = response.data.id;
+        operatorTalonStore.setCurrentTalonId(response.data.id);
         enabledTalonById.value = true;
       }
     },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    },
     { action: 'current' }
   );
-});
+}
+onMounted(getCurrentTalon);
 </script>
 <template>
   <div class="wrapper columns">
     <div class="column">
       <div class="columns">
         <div class="column is-one-third">
-          <div class="fixed-grid has-3-cols">
+          <div class="fixed-grid has-4-cols">
             <div class="grid">
               <b-button
                 @click="getNextTalon()"
-                class="cell"
                 type="is-link"
+                class="cell"
                 :disabled="disabledStateOfButtons.next"
               >
                 Следующий
@@ -222,6 +278,14 @@ onMounted(() => {
                 :disabled="disabledStateOfButtons.cancel"
               >
                 Отменить
+              </b-button>
+              <b-button
+                @click="getNewTalon()"
+                type="is-link is-light"
+                class="cell"
+                :disabled="disabledStateOfButtons.new"
+              >
+                Создать
               </b-button>
               <b-button
                 v-if="!disabledStateOfButtons.start"

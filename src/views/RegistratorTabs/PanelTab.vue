@@ -102,9 +102,18 @@ function registerTalon() {
   });
 }
 onMounted(() => {
-  getAPIData('/queue/info', auth, (response) => {
-    Object.assign(info, response.data);
-  });
+  getAPIData(
+    '/queue/info',
+    auth,
+    (response) => {
+      Object.assign(info, response.data);
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    }
+  );
 });
 </script>
 <template>
