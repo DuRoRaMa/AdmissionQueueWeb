@@ -1,4 +1,4 @@
-import gql from 'graphql-tag'
+import gql from 'graphql-tag';
 
 const GET_TALON_BY_ID = gql`
   query getTalonById($id: ID!) {
@@ -6,6 +6,8 @@ const GET_TALON_BY_ID = gql`
       id
       name
       ordinal
+      action
+      createdAt
       purpose {
         name
         description
@@ -19,5 +21,5 @@ const GET_TALON_BY_ID = gql`
     }
     countActiveTalons
   }
-`
-export default GET_TALON_BY_ID
+`;
+export default GET_TALON_BY_ID;

@@ -21,7 +21,7 @@ const currentTalon = ref({});
 const enabledTalonById = ref(false);
 const talonStatus = computed(() => {
   if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
-  return currentTalon.value.logs.at(-1).action;
+  return currentTalon.value.action;
 });
 let disabledStateOfButtons = ref({
   next: true,
@@ -324,13 +324,9 @@ onMounted(getCurrentTalon);
           <div>Номер талона: {{ currentTalon.name }}</div>
           <div>
             Время регистрации:
-            {{
-              new Date(
-                currentTalon.logs.filter((x: any) => x.action === 'Created')[0].createdAt
-              ).toLocaleString() || ''
-            }}
+            {{ new Date(currentTalon.createdAt).toLocaleString() || '' }}
           </div>
-          <div>Статус: {{ currentTalon.logs.at(-1).action || '' }}</div>
+          <div>Статус: {{ currentTalon.action }}</div>
           <div>Цель: {{ currentTalon.purpose.name || '' }}</div>
           <div>
             Комментарии:
