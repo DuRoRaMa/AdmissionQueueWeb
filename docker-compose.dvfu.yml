@@ -4,13 +4,15 @@ services:
     env_file: ./.env.production
     container_name: aq-frontend
     build:
+      context: .  # Явное указание контекста
       dockerfile: ./Dockerfile.dvfu
       target: production
     networks:
       - aq-proxy
     ports:
-      - 80:80
-      - 443:443
+      - "80:80"   # Всегда заключайте номера портов в кавычки
+      - "443:443"  # чтобы избежать проблем с парсингом YAML
+
 networks:
   aq-proxy:
     external: true
