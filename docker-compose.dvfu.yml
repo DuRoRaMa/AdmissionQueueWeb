@@ -11,6 +11,16 @@ services:
     ports:
       - 80:80
       - 443:443
+    volumes:
+      # Монтируем папку с SSL-сертификатами
+      - ./ssl:/etc/nginx/ssl:ro
+    command: >
+      sh -c "nginx -g 'daemon off;'"
+    environment:
+      # Указываем домен для фронтенда
+      VIRTUAL_HOST: vinogradov-it.ru,www.vinogradov-it.ru
+      VIRTUAL_PORT: 80
+
 networks:
   aq-proxy:
     external: true
