@@ -5,6 +5,7 @@ import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
 import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
 import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
+import { set } from 'vue';
 
 const talonsPerCol = 7;
 interface Talon {
@@ -25,26 +26,28 @@ const tablo_status = useQuery(
 const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-only' });
 const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
 let queueForNotification: Talon[] = [];
-// res -> queue -> setinterval -> pop from queue -> show -> setInterval check if somethins show -> cycle
+
 setInterval(() => {
   if (!currentNotification.show) {
     showNotification();
   }
 }, 1000);
+
 tablo_status.onResult((res) => {
-  if (res.loading) return null;
+  if (res.loading) return;
   let tablo_talons: tabloTalons[] = res.data.tabloTalons;
 
-  for (const talon of tablo_talons) {
+  const newTalons = tablo_talons.map((talon) => {
     const assigned_logs = talon.logs.filter((x: any) => x.action === 'Assigned');
-    const created_by = assigned_logs.at(-1).createdBy;
-    const place = created_by.operatorSettings.location?.name;
-    data.talons.push({ id: talon.id, name: talon.name, location: place });
-  }
-  data.talons.sort((a, b) => Number(a.location) - Number(b.location));
+    const created_by = assigned_logs.at(-1)?.createdBy;
+    const place = created_by?.operatorSettings?.location?.name;
+    return { id: talon.id, name: talon.name, location: place };
+  });
 
+  data.talons = newTalons.sort((a, b) => Number(a.location) - Number(b.location));
   data.lastTalonLogId = res.data.lastTalonLog.id;
 });
+
 function showNotification() {
   let notif = queueForNotification.shift();
   if (notif) {
@@ -66,13 +69,13 @@ function showNotification() {
     }, 10000);
   }
 }
+
 watch(
   result,
   (res) => {
     const log: talonLogs = res.talonLogs;
     switch (log.action) {
       case 'Assigned':
-        // eslint-disable-next-line no-case-declarations
         const talon: Talon = {
           id: log.talon.id,
           name: log.talon.name,
@@ -80,20 +83,12 @@ watch(
         };
         queueForNotification.push(talon);
         if (log.id > data.lastTalonLogId) {
-          data.talons.unshift(talon);
+          data.talons = [talon, ...data.talons];
         }
         break;
       case 'Completed':
-        data.talons.splice(
-          data.talons.findIndex((x) => x.id === log.talon.id),
-          1
-        );
-        break;
       case 'Cancelled':
-        data.talons.splice(
-          data.talons.findIndex((x) => x.id === log.talon.id),
-          1
-        );
+        data.talons = data.talons.filter((x) => x.id !== log.talon.id);
         break;
       default:
         break;
@@ -102,28 +97,34 @@ watch(
   },
   { immediate: false }
 );
-watch(data, () => {
-  data_for_show.length = 0;
-  let locs = active_locations.slice(0, active_locations.length);
 
-  for (const tal of data.talons) {
-    if (tal.location) {
-      data_for_show.push(tal);
-      let ind = locs.indexOf(tal.location);
-      if (ind === -1) {
-        active_locations.push(tal.location);
-        continue;
+watch(
+  data,
+  () => {
+    data_for_show.length = 0;
+    let locs = [...active_locations];
+
+    for (const tal of data.talons) {
+      if (tal.location) {
+        data_for_show.push(tal);
+        let ind = locs.indexOf(tal.location);
+        if (ind === -1) {
+          set(active_locations, active_locations.length, tal.location);
+          continue;
+        }
+        locs.splice(ind, 1);
       }
-      locs.splice(ind, 1);
     }
-  }
 
-  for (const loc of locs) {
-    data_for_show.push({ name: undefined, location: loc });
-  }
+    for (const loc of locs) {
+      data_for_show.push({ name: undefined, location: loc });
+    }
 
-  data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
-});
+    data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
+  },
+  { deep: true }
+);
+
 onMounted(() => {
   fetch(import.meta.env.VITE_API_URL + '/queue/info', {
     method: 'GET',
@@ -131,15 +132,17 @@ onMounted(() => {
       'Content-Type': 'application/json'
     }
   }).then(async (response) => {
-    for (const loc of (await response.json()).locations) {
+    const locations = (await response.json()).locations;
+    for (const loc of locations) {
       if (loc.settings !== null) {
-        active_locations.push(loc.name);
+        set(active_locations, active_locations.length, loc.name);
       }
     }
     tablo_status_enabled.value = true;
   });
 });
 </script>
+
 <template>
   <div style="margin: 32px">
     <HeaderPanel></HeaderPanel>
@@ -254,6 +257,7 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
 <style>
 .hor-line {
   border-bottom: 3px solid #f5f7fb;
