@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useQuery, useSubscription } from '@vue/apollo-composable';
-import { TABLO_STATUS, TALON_LOG_SUB } from '@/queries/tablo';
 import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
+import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
+import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
+import { set } from 'vue';
 
 const talonsPerCol = 7;
 
