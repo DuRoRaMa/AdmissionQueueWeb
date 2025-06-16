@@ -1,254 +1,174 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useQuery, useSubscription } from '@vue/apollo-composable';
+import { TABLO_STATUS, TALON_LOG_SUB } from '@/queries/tablo';
 import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
-import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
-import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
 
 const talonsPerCol = 7;
+
 interface Talon {
   id: number;
   name: string;
   location: string;
 }
 
+// Состояние компонента
 const data = reactive({ talons: [] as Talon[], lastTalonLogId: -1 });
 const data_for_show = reactive([] as { name: string | undefined; location: string }[]);
 const active_locations = reactive([] as string[]);
 const tablo_status_enabled = ref(false);
-const tablo_status = useQuery(
-  TABLO_STATUS,
-  {},
-  { fetchPolicy: 'network-only', enabled: tablo_status_enabled }
-);
-const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-only' });
 const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
 let queueForNotification: Talon[] = [];
 
-setInterval(() => {
-  if (!currentNotification.show) {
-    showNotification();
+// Настройка Apollo
+const { result: subscriptionResult, error: subscriptionError, onError: onSubscriptionError } = useSubscription(
+  TALON_LOG_SUB,
+  {},
+  { 
+    fetchPolicy: 'network-only',
+    shouldResubscribe: true
   }
-}, 1000);
+);
 
-tablo_status.onResult((res) => {
-  if (res.loading) return;
-  let tablo_talons: tabloTalons[] = res.data.tabloTalons;
+const { result: queryResult, refetch: refetchTabloStatus } = useQuery(
+  TABLO_STATUS,
+  {},
+  { 
+    fetchPolicy: 'network-only',
+    enabled: tablo_status_enabled
+  }
+);
 
-  const newTalons = tablo_talons.map((talon) => {
-    const assigned_logs = talon.logs.filter((x: any) => x.action === 'Assigned');
-    const created_by = assigned_logs.at(-1)?.createdBy;
-    const place = created_by?.operatorSettings?.location?.name;
-    return { id: talon.id, name: talon.name, location: place };
-  });
+// Обработка ошибок WebSocket
+onSubscriptionError((error) => {
+  console.error('WebSocket error:', error);
+  setTimeout(() => {
+    refetchTabloStatus();
+  }, 3000);
+});
 
+// Обработка данных подписки
+watch(subscriptionResult, (res) => {
+  if (!res) return;
+  
+  const log = res.talonLogs;
+  switch (log.action) {
+    case 'Assigned':
+      const talon: Talon = {
+        id: log.talon.id,
+        name: log.talon.name,
+        location: log.createdBy.operatorSettings?.location?.name || '0'
+      };
+      queueForNotification.push(talon);
+      if (log.id > data.lastTalonLogId) {
+        data.talons = [talon, ...data.talons];
+      }
+      break;
+      
+    case 'Completed':
+    case 'Cancelled':
+      data.talons = data.talons.filter(x => x.id !== log.talon.id);
+      break;
+  }
+  
+  if (log.id > data.lastTalonLogId) {
+    data.lastTalonLogId = log.id;
+  }
+});
+
+// Обработка данных запроса
+watch(queryResult, (res) => {
+  if (!res || res.loading) return;
+  
+  const tablo_talons = res.data.tabloTalons;
+  const newTalons = tablo_talons.map(talon => ({
+    id: talon.id,
+    name: talon.name,
+    location: talon.logs
+      .filter(x => x.action === 'Assigned')
+      .at(-1)
+      ?.createdBy?.operatorSettings?.location?.name || '0'
+  }));
+  
   data.talons = newTalons.sort((a, b) => Number(a.location) - Number(b.location));
   data.lastTalonLogId = res.data.lastTalonLog.id;
 });
 
-function showNotification() {
-  let notif = queueForNotification.shift();
-  if (notif) {
+// Обновление данных для отображения
+watch(data, () => {
+  data_for_show.length = 0;
+  const locs = [...active_locations];
+
+  data.talons.forEach(tal => {
+    if (tal.location) {
+      data_for_show.push(tal);
+      const ind = locs.indexOf(tal.location);
+      if (ind !== -1) locs.splice(ind, 1);
+    }
+  });
+
+  locs.forEach(loc => {
+    data_for_show.push({ name: undefined, location: loc });
+  });
+
+  data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
+}, { deep: true });
+
+// Уведомления
+setInterval(() => {
+  if (!currentNotification.show && queueForNotification.length > 0) {
+    const notif = queueForNotification.shift()!;
     currentNotification.name = notif.name;
     currentNotification.location = notif.location;
     currentNotification.show = true;
-    fetch('http://localhost:8001/tts', {
+    
+    fetch('/api/v1/queue/tts', {
       method: 'POST',
       body: JSON.stringify(notif),
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: '*/*',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
-    setTimeout(() => {
-      currentNotification.show = false;
-    }, 10000);
+    
+    setTimeout(() => currentNotification.show = false, 10000);
   }
-}
+}, 1000);
 
-watch(
-  result,
-  (res) => {
-    const log: talonLogs = res.talonLogs;
-    switch (log.action) {
-      case 'Assigned':
-        const talon: Talon = {
-          id: log.talon.id,
-          name: log.talon.name,
-          location: log.createdBy.operatorSettings!.location.name
-        };
-        queueForNotification.push(talon);
-        if (log.id > data.lastTalonLogId) {
-          data.talons = [talon, ...data.talons];
-        }
-        break;
-      case 'Completed':
-      case 'Cancelled':
-        data.talons = data.talons.filter((x) => x.id !== log.talon.id);
-        break;
-      default:
-        break;
-    }
-    if (log.id > data.lastTalonLogId) data.lastTalonLogId = log.id;
-  },
-  { immediate: false }
-);
-
-watch(
-  data,
-  () => {
-    data_for_show.length = 0;
-    let locs = [...active_locations];
-
-    for (const tal of data.talons) {
-      if (tal.location) {
-        data_for_show.push(tal);
-        let ind = locs.indexOf(tal.location);
-        if (ind === -1) {
-          active_locations.push(tal.location);
-          continue;
-        }
-        locs.splice(ind, 1);
-      }
-    }
-
-    for (const loc of locs) {
-      data_for_show.push({ name: undefined, location: loc });
-    }
-
-    data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
-  },
-  { deep: true }
-);
-
-onMounted(() => {
-  fetch(import.meta.env.VITE_API_URL + '/queue/info', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then(async (response) => {
-    const locations = (await response.json()).locations;
-    for (const loc of locations) {
-      if (loc.settings !== null) {
-        active_locations.push(loc.name);
-      }
-    }
+// Инициализация
+onMounted(async () => {
+  try {
+    const response = await fetch('/api/v1/queue/info');
+    const { locations } = await response.json();
+    active_locations.push(...locations.filter(loc => loc.settings).map(loc => loc.name));
     tablo_status_enabled.value = true;
-  });
+  } catch (error) {
+    console.error('Failed to load locations:', error);
+  }
 });
 </script>
 
 <template>
-  <div style="margin: 32px">
-    <HeaderPanel></HeaderPanel>
-    <div class="hor-line"></div>
-    <div class="up-ver-line"></div>
-    <div class="down-hor-line"></div>
-    <p
-      style="
-        position: absolute;
-        bottom: 4%;
-        left: 10%;
-        font-size: 28px;
-        font-family: 'Unbounded-Bold';
-        color: #1d3d84;
-      "
-    >
-      Удачи<br />
-      при поступлении!
-    </p>
-    <div class="columns has-text-centered">
-      <div class="column">
-        <div class="columns is-multiline" style="padding: 1%">
-          <div class="column is-full" style="padding-left: 60px; padding-top: 10px">
-            <div v-if="currentNotification.show">
-              <p style="font-size: 4em; color: black; font-family: 'HeliosC'; font-weight: 700">
-                Талон
-              </p>
-              <p style="font-size: 7em; color: #1d3d84; font-family: 'HeliosC'; font-weight: 700">
-                {{ currentNotification.name }}
-              </p>
-              <p
-                style="
-                  font-size: 5em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
-              >
-                стол
-              </p>
-              <p
-                style="
-                  font-size: 6em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
-              >
-                {{ currentNotification.location }}
-              </p>
-            </div>
-            <img
-              src="@/assets/DVFU_logo_tablo.svg"
-              alt=""
-              style="
-                max-height: 350px;
-                position: absolute;
-                bottom: 3%;
-                left: 5%;
-                transform: scale(0.8);
-              "
-            />
-          </div>
+  <div class="tablo-container">
+    <HeaderPanel />
+    
+    <div class="columns">
+      <div class="column notification-column">
+        <div v-if="currentNotification.show" class="notification">
+          <p class="notification-title">Талон</p>
+          <p class="notification-number">{{ currentNotification.name }}</p>
+          <p class="notification-desk">стол</p>
+          <p class="notification-location">{{ currentNotification.location }}</p>
         </div>
       </div>
+      
       <div class="column is-two-thirds">
-        <div class="columns is-multiline" style="padding: 1%">
-          <div class="column">
-            <div class="columns is-multiline is-gapless">
-              <div class="column is-three-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Талон
-                </p>
+        <div class="columns is-multiline">
+          <div class="column" v-for="(col, index) in [data_for_show.slice(0, talonsPerCol), data_for_show.slice(talonsPerCol)]" :key="index">
+            <div class="talon-list">
+              <div class="list-header">
+                <span>Талон</span>
+                <span>Стол</span>
               </div>
-              <div class="column is-one-fifths"></div>
-              <div class="column is-one-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Стол
-                </p>
-              </div>
-              <InProgressRaw
-                v-for="talon in data_for_show.slice(0, talonsPerCol)"
-                :talon="talon"
-                :key="talon.location"
-              />
-            </div>
-          </div>
-          <div class="column">
-            <div class="columns is-multiline is-gapless">
-              <div class="column is-three-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Талон
-                </p>
-              </div>
-              <div class="column is-one-fifths"></div>
-              <div class="column is-one-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Стол
-                </p>
-              </div>
-              <InProgressRaw
-                v-for="talon in data_for_show.slice(talonsPerCol)"
-                :talon="talon"
-                :key="talon.location"
-              />
+              <InProgressRaw v-for="talon in col" :talon="talon" :key="talon.location" />
             </div>
           </div>
         </div>
@@ -257,34 +177,45 @@ onMounted(() => {
   </div>
 </template>
 
-<style>
-.hor-line {
-  border-bottom: 3px solid #f5f7fb;
-  width: calc(100% - 64px);
-  margin-left: 40px;
+<style scoped>
+.tablo-container {
+  margin: 32px;
 }
-.up-ver-line {
-  border-right: 3px solid #f5f7fb;
-  height: 80vh;
-  margin-top: 40px;
-  position: absolute;
-  left: 36%;
+
+.notification-column {
+  position: relative;
 }
-.down-hor-line {
-  border-bottom: 3px solid #f5f7fb;
-  position: absolute;
-  width: 30%;
-  bottom: 18%;
-  left: 4%;
+
+.notification {
+  text-align: center;
+  padding: 20px;
 }
-html {
-  overflow: hidden;
+
+.notification-title {
+  font-size: 4em;
+  color: black;
+  font-family: 'HeliosC';
+  font-weight: 700;
 }
-.vertical-center {
-  margin: 0;
-  position: absolute;
-  top: 50%;
-  -ms-transform: translateY(-50%);
-  transform: translateY(-50%);
+
+.notification-number {
+  font-size: 7em;
+  color: #1d3d84;
+  font-family: 'HeliosC';
+  font-weight: 700;
+}
+
+.talon-list {
+  margin-top: 20px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-family: HeliosC;
+  font-size: 30px;
+  font-weight: 800;
+  color: black;
 }
 </style>
