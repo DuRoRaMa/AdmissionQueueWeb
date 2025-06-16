@@ -1,292 +1,354 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
-import { useQuery, useSubscription } from '@vue/apollo-composable';
-import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
-import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
-import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
-import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
+import { getAPIData, postAPIData } from '@/axios';
+import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
+import { useAuth } from 'vue-auth3';
+import type { OperatorSettings } from '@/types';
+import { useQuery } from '@vue/apollo-composable';
+import { GET_TALON_BY_ID } from '@/queries';
+import HelpModalForm from '@/components/HelpModalForm.vue';
+import ConfirmNewTalonForm from '@/components/OperatorPage/ConfirmNewTalonForm.vue';
+import { useStopwatch } from 'vue-timer-hook';
+import { useOperatorTalonStore } from '@/stores/OperatorTalonStore';
+import { storeToRefs } from 'pinia';
 
-const talonsPerCol = 7;
-interface Talon {
-  id: number;
-  name: string;
-  location: string;
-}
-
-const data = reactive({ talons: [] as Talon[], lastTalonLogId: -1 });
-const data_for_show = reactive([] as { name: string | undefined; location: string }[]);
-const active_locations = reactive([] as string[]);
-const tablo_status_enabled = ref(false);
-const tablo_status = useQuery(
-  TABLO_STATUS,
-  {},
-  { fetchPolicy: 'network-only', enabled: tablo_status_enabled }
-);
-const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-only' });
-const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
-let queueForNotification: Talon[] = [];
-
-setInterval(() => {
-  if (!currentNotification.show) {
-    showNotification();
-  }
-}, 1000);
-
-tablo_status.onResult((res) => {
-  console.log('Tablo status data:', res.data);
-  if (res.loading) return;
-  let tablo_talons: tabloTalons[] = res.data.tabloTalons;
-
-  const newTalons = tablo_talons.map((talon) => {
-    const assigned_logs = talon.logs.filter((x: any) => x.action === 'Assigned');
-    const created_by = assigned_logs.at(-1)?.createdBy;
-    const place = created_by?.operatorSettings?.location?.name;
-    return { id: talon.id, name: talon.name, location: place };
-  });
-
-  data.talons = newTalons.sort((a, b) => Number(a.location) - Number(b.location));
-  data.lastTalonLogId = res.data.lastTalonLog.id;
+const stopWatch = useStopwatch(0, false);
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
+const auth = useAuth();
+const operatorTalonStore = useOperatorTalonStore();
+const { currentTalonId } = storeToRefs(operatorTalonStore);
+let currentSettings: OperatorSettings | null = null;
+const currentTalon = ref({});
+const enabledTalonById = ref(false);
+const talonStatus = computed(() => {
+  if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
+  return currentTalon.value.action;
 });
-
-function showNotification() {
-  let notif = queueForNotification.shift();
-  if (notif) {
-    currentNotification.name = notif.name;
-    currentNotification.location = notif.location;
-    currentNotification.show = true;
-    fetch('http://localhost:8001/tts', {
-      method: 'POST',
-      body: JSON.stringify(notif),
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: '*/*',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-    setTimeout(() => {
-      currentNotification.show = false;
-    }, 10000);
-  }
-}
-
+let disabledStateOfButtons = ref({
+  next: true,
+  notify: true,
+  cancel: true,
+  new: false,
+  start: true,
+  complete: true,
+  redirect: true
+});
+let talonById = useQuery(
+  GET_TALON_BY_ID,
+  { id: currentTalonId },
+  { enabled: enabledTalonById, fetchPolicy: 'cache-and-network' }
+);
+talonById.onResult((res) => {
+  if (res.loading) return null;
+  currentTalon.value = res.data.talon;
+});
 watch(
-  result,
-  (res) => {
-    console.log('Subscription data:', res);
-    const log: talonLogs = res.talonLogs;
-    switch (log.action) {
+  talonStatus,
+  (newStatus, oldStatus) => {
+    switch (newStatus) {
+      case 'NOT_ASSIGNED':
+        disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.new = false;
+        disabledStateOfButtons.value.notify = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = true;
+        if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true;
+        break;
       case 'Assigned':
-        const talon: Talon = {
-          id: log.talon.id,
-          name: log.talon.name,
-          location: log.createdBy.operatorSettings!.location.name
-        };
-        queueForNotification.push(talon);
-        if (log.id > data.lastTalonLogId) {
-          data.talons = [talon, ...data.talons];
-        }
+        disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.new = true;
+        disabledStateOfButtons.value.notify = false;
+        disabledStateOfButtons.value.start = false;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = false;
+        break;
+      case 'Canceled':
+        disabledStateOfButtons.value.next = false;
+        disabledStateOfButtons.value.new = false;
+        disabledStateOfButtons.value.notify = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = true;
+        break;
+      case 'Started':
+        const started = new Date(currentTalon.value.logs.at(-1).createdAt);
+        const offset = (new Date() - started) / 1000;
+        stopWatch.reset(offset, true);
+        disabledStateOfButtons.value.next = true;
+        disabledStateOfButtons.value.new = true;
+        disabledStateOfButtons.value.start = true;
+        disabledStateOfButtons.value.complete = false;
+        disabledStateOfButtons.value.redirect = true;
+        disabledStateOfButtons.value.cancel = false;
+        disabledStateOfButtons.value.notify = true;
         break;
       case 'Completed':
-      case 'Cancelled':
-        data.talons = data.talons.filter((x) => x.id !== log.talon.id);
+        disabledStateOfButtons.value.complete = true;
         break;
       default:
         break;
     }
-    if (log.id > data.lastTalonLogId) data.lastTalonLogId = log.id;
   },
-  { immediate: false }
+  { immediate: true }
 );
-
-watch(
-  data,
-  () => {
-    data_for_show.length = 0;
-    let locs = [...active_locations];
-
-    for (const tal of data.talons) {
-      if (tal.location) {
-        data_for_show.push(tal);
-        let ind = locs.indexOf(tal.location);
-        if (ind === -1) {
-          active_locations.push(tal.location);
-          continue;
-        }
-        locs.splice(ind, 1);
+function getNextTalon() {
+  disabledStateOfButtons.value.next = true;
+  getAPIData(
+    '/queue/operator/talon/action',
+    auth,
+    (response) => {
+      if (response.data.id) {
+        operatorTalonStore.setCurrentTalonId(response.data.id);
+        enabledTalonById.value = true;
+      } else {
+        disabledStateOfButtons.value.next = false;
+        $buefy.toast.open({
+          message: 'В очереди нет талонов'
+        });
       }
-    }
-
-    for (const loc of locs) {
-      data_for_show.push({ name: undefined, location: loc });
-    }
-
-    data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
-  },
-  { deep: true }
-);
-
-onMounted(() => {
-  fetch(import.meta.env.VITE_API_URL + '/queue/info', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then(async (response) => {
-    const locations = (await response.json()).locations;
-    for (const loc of locations) {
-      if (loc.settings !== null) {
-        active_locations.push(loc.name);
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.next = false;
+    },
+    { action: 'next' }
+  );
+}
+function startTalon() {
+  disabledStateOfButtons.value.start = true;
+  postAPIData(
+    '/queue/operator/talon/action',
+    {},
+    auth,
+    (response) => {
+      if (response.status === 200) {
+        talonById.refetch();
       }
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.start = false;
+    },
+    {
+      action: 'start'
     }
-    tablo_status_enabled.value = true;
+  );
+}
+function cancelTalon() {
+  disabledStateOfButtons.value.complete = true;
+  postAPIData(
+    '/queue/operator/talon/action',
+    {},
+    auth,
+    (response) => {
+      if (response.status === 200) {
+        currentTalon.value = {};
+        stopWatch.reset(0, false);
+      }
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.cancel = false;
+    },
+    {
+      action: 'cancel'
+    }
+  );
+}
+function notifyTalon() {
+  disabledStateOfButtons.value.notify = true;
+  postAPIData(
+    '/queue/operator/talon/action',
+    {},
+    auth,
+    (response) => {
+      $buefy.notification.open({
+        message: `Уведомление запущено`,
+        duration: 1000,
+        type: 'is-success',
+        pauseOnHover: false
+      });
+      disabledStateOfButtons.value.notify = false;
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.notify = false;
+    },
+    {
+      action: 'notify'
+    }
+  );
+}
+function completeTalon() {
+  disabledStateOfButtons.value.complete = true;
+  postAPIData(
+    '/queue/operator/talon/action',
+    {},
+    auth,
+    (response) => {
+      if (response.status === 200) {
+        currentTalon.value = {};
+        stopWatch.reset(0, false);
+      }
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+      disabledStateOfButtons.value.complete = false;
+    },
+    {
+      action: 'complete'
+    }
+  );
+}
+function getNewTalon() {
+  $buefy.modal.open({
+    component: ConfirmNewTalonForm,
+    props: { auth },
+    hasModalCard: true,
+    trapFocus: true
   });
-});
-</script>
+}
+function cardHelpModal() {
+  $buefy.modal.open({
+    component: HelpModalForm,
+    props: { auth },
+    hasModalCard: true,
+    trapFocus: true
+  });
+}
+function getCurrentTalon() {
+  console.log('getCurrentTalon');
 
+  getAPIData(
+    '/queue/operator/talon/action',
+    auth,
+    (response) => {
+      if (response.data.id) {
+        operatorTalonStore.setCurrentTalonId(response.data.id);
+        enabledTalonById.value = true;
+      }
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    },
+    { action: 'current' }
+  );
+}
+onMounted(getCurrentTalon);
+</script>
 <template>
-  <div style="margin: 32px">
-    <HeaderPanel></HeaderPanel>
-    <div class="hor-line"></div>
-    <div class="up-ver-line"></div>
-    <div class="down-hor-line"></div>
-    <p
-      style="
-        position: absolute;
-        bottom: 4%;
-        left: 10%;
-        font-size: 28px;
-        font-family: 'Unbounded-Bold';
-        color: #1d3d84;
-      "
-    >
-      Удачи<br />
-      при поступлении!
-    </p>
-    <div class="columns has-text-centered">
-      <div class="column">
-        <div class="columns is-multiline" style="padding: 1%">
-          <div class="column is-full" style="padding-left: 60px; padding-top: 10px">
-            <div v-if="currentNotification.show">
-              <p style="font-size: 4em; color: black; font-family: 'HeliosC'; font-weight: 700">
-                Талон
-              </p>
-              <p style="font-size: 7em; color: #1d3d84; font-family: 'HeliosC'; font-weight: 700">
-                {{ currentNotification.name }}
-              </p>
-              <p
-                style="
-                  font-size: 5em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
+  <div class="wrapper columns">
+    <div class="column">
+      <div class="columns">
+        <div class="column is-one-third">
+          <div class="fixed-grid has-4-cols">
+            <div class="grid">
+              <b-button
+                @click="getNextTalon()"
+                type="is-link"
+                class="cell"
+                :disabled="disabledStateOfButtons.next"
               >
-                стол
-              </p>
-              <p
-                style="
-                  font-size: 6em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
+                Следующий
+              </b-button>
+              <b-button
+                @click="notifyTalon()"
+                class="cell"
+                type="is-warning"
+                :disabled="disabledStateOfButtons.notify"
               >
-                {{ currentNotification.location }}
-              </p>
+                Позвать
+              </b-button>
+              <b-button
+                @click="cancelTalon()"
+                class="cell"
+                type="is-danger"
+                :disabled="disabledStateOfButtons.cancel"
+              >
+                Отменить
+              </b-button>
+              <b-button
+                @click="getNewTalon()"
+                type="is-link is-light"
+                class="cell"
+                :disabled="disabledStateOfButtons.new"
+              >
+                Создать
+              </b-button>
+              <b-button
+                v-if="!disabledStateOfButtons.start"
+                @click="startTalon()"
+                class="cell"
+                type="is-success"
+                :disabled="disabledStateOfButtons.start"
+              >
+                Начать
+              </b-button>
+              <b-button
+                v-else
+                @click="completeTalon()"
+                class="cell"
+                type="is-success"
+                :disabled="disabledStateOfButtons.complete"
+              >
+                Завершить
+              </b-button>
+              <b-button
+                class="cell"
+                type="is-warning is-light"
+                :disabled="disabledStateOfButtons.redirect"
+              >
+                Переадресовать
+              </b-button>
+              <b-button class="cell" type="is-info" @click="cardHelpModal">Помощь</b-button>
             </div>
-            <img
-              src="@/assets/DVFU_logo_tablo.svg"
-              alt=""
-              style="
-                max-height: 350px;
-                position: absolute;
-                bottom: 3%;
-                left: 5%;
-                transform: scale(0.8);
-              "
-            />
           </div>
         </div>
+        <div class="column"></div>
       </div>
-      <div class="column is-two-thirds">
-        <div class="columns is-multiline" style="padding: 1%">
-          <div class="column">
-            <div class="columns is-multiline is-gapless">
-              <div class="column is-three-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Талон
-                </p>
-              </div>
-              <div class="column is-one-fifths"></div>
-              <div class="column is-one-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Стол
-                </p>
-              </div>
-              <InProgressRaw
-                v-for="talon in data_for_show.slice(0, talonsPerCol)"
-                :talon="talon"
-                :key="talon.location"
-              />
-            </div>
+      <div class="block">
+        <p>Информация об абитуриенте</p>
+        <div v-if="currentTalon?.name">
+          <div>Номер талона: {{ currentTalon.name }}</div>
+          <div>
+            Время регистрации:
+            {{ new Date(currentTalon.createdAt).toLocaleString() || '' }}
           </div>
-          <div class="column">
-            <div class="columns is-multiline is-gapless">
-              <div class="column is-three-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Талон
-                </p>
-              </div>
-              <div class="column is-one-fifths"></div>
-              <div class="column is-one-fifths">
-                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
-                  Стол
-                </p>
-              </div>
-              <InProgressRaw
-                v-for="talon in data_for_show.slice(talonsPerCol)"
-                :talon="talon"
-                :key="talon.location"
-              />
-            </div>
+          <div>Статус: {{ currentTalon.action }}</div>
+          <div>Цель: {{ currentTalon.purpose.name || '' }}</div>
+          <div>
+            Комментарии:
+            {{ talonById.result.value?.talon.logs.map((x: any) => x.comment) || '' }}
           </div>
+        </div>
+        <div v-else>
+          <div>Номер талона:</div>
+          <div>Время регистрации:</div>
+          <div>Статус:</div>
+          <div>Цель:</div>
+          <div>Комментарии:</div>
+        </div>
+        <div>
+          Время обработки: {{ stopWatch.hours }}:{{ stopWatch.minutes }}:{{ stopWatch.seconds }}
         </div>
       </div>
     </div>
   </div>
 </template>
-
 <style>
-.hor-line {
-  border-bottom: 3px solid #f5f7fb;
-  width: calc(100% - 64px);
-  margin-left: 40px;
-}
-.up-ver-line {
-  border-right: 3px solid #f5f7fb;
-  height: 80vh;
-  margin-top: 40px;
-  position: absolute;
-  left: 36%;
-}
-.down-hor-line {
-  border-bottom: 3px solid #f5f7fb;
-  position: absolute;
-  width: 30%;
-  bottom: 18%;
-  left: 4%;
-}
-html {
-  overflow: hidden;
-}
-.vertical-center {
-  margin: 0;
-  position: absolute;
-  top: 50%;
-  -ms-transform: translateY(-50%);
-  transform: translateY(-50%);
+.wrapper {
+  margin: auto;
 }
 </style>
