@@ -5,7 +5,6 @@ import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
 import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
 import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
-import { set } from 'vue';
 
 const talonsPerCol = 7;
 interface Talon {
@@ -109,7 +108,7 @@ watch(
         data_for_show.push(tal);
         let ind = locs.indexOf(tal.location);
         if (ind === -1) {
-          set(active_locations, active_locations.length, tal.location);
+          active_locations.push(tal.location);
           continue;
         }
         locs.splice(ind, 1);
@@ -135,7 +134,7 @@ onMounted(() => {
     const locations = (await response.json()).locations;
     for (const loc of locations) {
       if (loc.settings !== null) {
-        set(active_locations, active_locations.length, loc.name);
+        active_locations.push(loc.name);
       }
     }
     tablo_status_enabled.value = true;
