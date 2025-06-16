@@ -10,7 +10,16 @@ const httpLink = createHttpLink({
 });
 const wsLink = new GraphQLWsLink(
   createClient({
-    url: import.meta.env.VITE_WS_URL + '/graphql/'
+    url: import.meta.env.VITE_WS_URL + '/graphql/',
+    connectionParams: () => ({
+      // Передаём токен из localStorage (если используется JWT)
+      token: localStorage.getItem('token'),
+      // Или сессионные cookies (если Django SessionAuth)
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+    }),
+    shouldRetry: () => true,  // Автоматически переподключаться
   })
 );
 
