@@ -31,6 +31,7 @@ const isSmallScreen = ref(false);
 // Проверка размера экрана
 const checkScreenSize = () => {
   isSmallScreen.value = window.innerWidth <= 1260 && window.innerHeight <= 260;
+  console.log(`Screen size: ${window.innerWidth}x${window.innerHeight}, small: ${isSmallScreen.value}`);
 };
 
 // Периодическое обновление статуса столов
@@ -201,6 +202,7 @@ onUnmounted(() => {
         font-family: 'Unbounded-Bold';
         color: #1d3d84;
       "
+      :class="{ 'small-screen-text': isSmallScreen }"
     >
       Удачи<br />
       при поступлении!
@@ -209,39 +211,16 @@ onUnmounted(() => {
       <div class="column">
         <div class="columns is-multiline" style="padding: 1%">
           <div class="column is-full" style="padding-left: 60px; padding-top: 10px">
-            <div v-if="currentNotification.show" class="notification-content">
-              <p style="font-size: 4em; color: black; font-family: 'HeliosC'; font-weight: 700">
-                Талон
-              </p>
-              <p style="font-size: 7em; color: #1d3d84; font-family: 'HeliosC'; font-weight: 700">
-                {{ currentNotification.name }}
-              </p>
-              <p
-                style="
-                  font-size: 5em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
-              >
-                стол
-              </p>
-              <p
-                style="
-                  font-size: 6em;
-                  line-height: 90px;
-                  font-family: 'HeliosC';
-                  color: black;
-                  font-weight: 700;
-                "
-              >
-                {{ currentNotification.location }}
-              </p>
+            <div v-if="currentNotification.show" class="notification-content" :class="{ 'small-notification': isSmallScreen }">
+              <p :class="{ 'small-text': isSmallScreen }">Талон</p>
+              <p :class="{ 'small-number': isSmallScreen }">{{ currentNotification.name }}</p>
+              <p :class="{ 'small-text': isSmallScreen }">стол</p>
+              <p :class="{ 'small-number': isSmallScreen }">{{ currentNotification.location }}</p>
             </div>
             <img
               src="@/assets/DVFU_logo_tablo.svg"
               alt=""
+              :class="{ 'small-logo': isSmallScreen }"
               style="
                 max-height: 350px;
                 position: absolute;
@@ -333,43 +312,40 @@ html {
 }
 
 /* Адаптивные стили для маленьких экранов */
-.small-screen .notification-content {
-  transform: scale(0.85);
-  transform-origin: top left;
-  padding-top: 5px;
+.small-screen .up-ver-line {
+  height: 70vh !important;
 }
 
-.small-screen .notification-content p {
+.small-notification {
+  transform: scale(0.85) !important;
+  transform-origin: top left !important;
+  padding-top: 5px !important;
+}
+
+.small-text {
+  font-size: 3em !important;
+  color: black !important;
+  font-family: 'HeliosC' !important;
+  font-weight: 700 !important;
   line-height: 1.2 !important;
   margin-bottom: 0.2em !important;
 }
 
-.small-screen .notification-content p:first-child {
-  font-size: 3em !important;
-}
-
-.small-screen .notification-content p:nth-child(2) {
+.small-number {
   font-size: 5em !important;
+  color: #1d3d84 !important;
+  font-family: 'HeliosC' !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0.2em !important;
 }
 
-.small-screen .notification-content p:nth-child(3) {
-  font-size: 3.5em !important;
-}
-
-.small-screen .notification-content p:nth-child(4) {
-  font-size: 4.5em !important;
-}
-
-.small-screen .up-ver-line {
-  height: 70vh;
-}
-
-.small-screen p[style*="bottom: 4%"] {
+.small-screen-text {
   font-size: 20px !important;
   bottom: 6% !important;
 }
 
-.small-screen img {
+.small-logo {
   max-height: 250px !important;
   bottom: 5% !important;
   left: 3% !important;
