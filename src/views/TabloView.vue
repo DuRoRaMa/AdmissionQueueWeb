@@ -26,6 +26,12 @@ const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-on
 const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
 let queueForNotification: Talon[] = [];
 let settingsRefreshInterval: number | null = null;
+const isSmallScreen = ref(false);
+
+// Проверка размера экрана
+const checkScreenSize = () => {
+  isSmallScreen.value = window.innerWidth <= 1260 && window.innerHeight <= 260;
+};
 
 // Периодическое обновление статуса столов
 const fetchActiveLocations = async () => {
@@ -166,39 +172,83 @@ onMounted(() => {
   
   // Включаем запрос статуса табло
   tablo_status_enabled.value = true;
+  
+  // Инициализация отслеживания размера экрана
+  checkScreenSize();
+  window.addEventListener('resize', checkScreenSize);
 });
 
 onUnmounted(() => {
   if (settingsRefreshInterval) {
     clearInterval(settingsRefreshInterval);
   }
+  window.removeEventListener('resize', checkScreenSize);
 });
 </script>
 
 <template>
-  <div class="container">
+  <div style="margin: 32px" :class="{ 'small-screen': isSmallScreen }">
     <HeaderPanel></HeaderPanel>
     <div class="hor-line"></div>
     <div class="up-ver-line"></div>
     <div class="down-hor-line"></div>
-    <p class="good-luck-text">
+    <p
+      style="
+        position: absolute;
+        bottom: 4%;
+        left: 10%;
+        font-size: 28px;
+        font-family: 'Unbounded-Bold';
+        color: #1d3d84;
+      "
+    >
       Удачи<br />
       при поступлении!
     </p>
     <div class="columns has-text-centered">
       <div class="column">
-        <div class="columns is-multiline notification-section">
-          <div class="column is-full notification-container">
+        <div class="columns is-multiline" style="padding: 1%">
+          <div class="column is-full" style="padding-left: 60px; padding-top: 10px">
             <div v-if="currentNotification.show" class="notification-content">
-              <p class="notification-title">Талон</p>
-              <p class="notification-name">{{ currentNotification.name }}</p>
-              <p class="notification-desk-label">стол</p>
-              <p class="notification-desk-number">{{ currentNotification.location }}</p>
+              <p style="font-size: 4em; color: black; font-family: 'HeliosC'; font-weight: 700">
+                Талон
+              </p>
+              <p style="font-size: 7em; color: #1d3d84; font-family: 'HeliosC'; font-weight: 700">
+                {{ currentNotification.name }}
+              </p>
+              <p
+                style="
+                  font-size: 5em;
+                  line-height: 90px;
+                  font-family: 'HeliosC';
+                  color: black;
+                  font-weight: 700;
+                "
+              >
+                стол
+              </p>
+              <p
+                style="
+                  font-size: 6em;
+                  line-height: 90px;
+                  font-family: 'HeliosC';
+                  color: black;
+                  font-weight: 700;
+                "
+              >
+                {{ currentNotification.location }}
+              </p>
             </div>
             <img
               src="@/assets/DVFU_logo_tablo.svg"
-              alt="DVFU Logo"
-              class="logo-image"
+              alt=""
+              style="
+                max-height: 350px;
+                position: absolute;
+                bottom: 3%;
+                left: 5%;
+                transform: scale(0.8);
+              "
             />
           </div>
         </div>
@@ -208,11 +258,15 @@ onUnmounted(() => {
           <div class="column">
             <div class="columns is-multiline is-gapless">
               <div class="column is-three-fifths">
-                <p class="column-header">Талон</p>
+                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
+                  Талон
+                </p>
               </div>
               <div class="column is-one-fifths"></div>
               <div class="column is-one-fifths">
-                <p class="column-header">Стол</p>
+                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
+                  Стол
+                </p>
               </div>
               <InProgressRaw
                 v-for="talon in data_for_show.slice(0, talonsPerCol)"
@@ -224,11 +278,15 @@ onUnmounted(() => {
           <div class="column">
             <div class="columns is-multiline is-gapless">
               <div class="column is-three-fifths">
-                <p class="column-header">Талон</p>
+                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
+                  Талон
+                </p>
               </div>
               <div class="column is-one-fifths"></div>
               <div class="column is-one-fifths">
-                <p class="column-header">Стол</p>
+                <p style="font-family: HeliosC; font-size: 30px; font-weight: 800; color: black">
+                  Стол
+                </p>
               </div>
               <InProgressRaw
                 v-for="talon in data_for_show.slice(talonsPerCol)"
@@ -243,17 +301,12 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.container {
-  margin: 32px;
-}
-
+<style>
 .hor-line {
   border-bottom: 3px solid #f5f7fb;
   width: calc(100% - 64px);
   margin-left: 40px;
 }
-
 .up-ver-line {
   border-right: 3px solid #f5f7fb;
   height: 80vh;
@@ -261,7 +314,6 @@ onUnmounted(() => {
   position: absolute;
   left: 36%;
 }
-
 .down-hor-line {
   border-bottom: 3px solid #f5f7fb;
   position: absolute;
@@ -269,122 +321,58 @@ onUnmounted(() => {
   bottom: 18%;
   left: 4%;
 }
-
 html {
   overflow: hidden;
 }
-
-.good-luck-text {
+.vertical-center {
+  margin: 0;
   position: absolute;
-  bottom: 4%;
-  left: 10%;
-  font-size: 28px;
-  font-family: 'Unbounded-Bold';
-  color: #1d3d84;
+  top: 50%;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
 }
 
-.notification-section {
-  padding: 1%;
+/* Адаптивные стили для маленьких экранов */
+.small-screen .notification-content {
+  transform: scale(0.85);
+  transform-origin: top left;
+  padding-top: 5px;
 }
 
-.notification-container {
-  padding-left: 60px; 
-  padding-top: 10px;
-  position: relative;
+.small-screen .notification-content p {
+  line-height: 1.2 !important;
+  margin-bottom: 0.2em !important;
 }
 
-.notification-content {
-  position: relative;
-  z-index: 10;
+.small-screen .notification-content p:first-child {
+  font-size: 3em !important;
 }
 
-.notification-title {
-  font-size: 4em;
-  color: black;
-  font-family: 'HeliosC';
-  font-weight: 700;
-  margin-bottom: 0.2em;
-  line-height: 1;
+.small-screen .notification-content p:nth-child(2) {
+  font-size: 5em !important;
 }
 
-.notification-name {
-  font-size: 7em;
-  color: #1d3d84;
-  font-family: 'HeliosC';
-  font-weight: 700;
-  margin-bottom: 0.2em;
-  line-height: 1;
+.small-screen .notification-content p:nth-child(3) {
+  font-size: 3.5em !important;
 }
 
-.notification-desk-label {
-  font-size: 5em;
-  font-family: 'HeliosC';
-  color: black;
-  font-weight: 700;
-  line-height: 1;
-  margin-bottom: 0.1em;
+.small-screen .notification-content p:nth-child(4) {
+  font-size: 4.5em !important;
 }
 
-.notification-desk-number {
-  font-size: 6em;
-  font-family: 'HeliosC';
-  color: black;
-  font-weight: 700;
-  line-height: 1;
+.small-screen .up-ver-line {
+  height: 70vh;
 }
 
-.logo-image {
-  max-height: 350px;
-  position: absolute;
-  bottom: 3%;
-  left: 5%;
-  transform: scale(0.8);
+.small-screen p[style*="bottom: 4%"] {
+  font-size: 20px !important;
+  bottom: 6% !important;
 }
 
-.column-header {
-  font-family: HeliosC; 
-  font-size: 30px; 
-  font-weight: 800; 
-  color: black;
-}
-
-/* Адаптация для экранов 1260x260 */
-@media (max-width: 1260px) and (max-height: 260px) {
-  .notification-title {
-    font-size: 3em !important;
-  }
-  
-  .notification-name {
-    font-size: 5em !important;
-  }
-  
-  .notification-desk-label {
-    font-size: 3.5em !important;
-  }
-  
-  .notification-desk-number {
-    font-size: 4.5em !important;
-  }
-  
-  .up-ver-line {
-    height: 70vh !important;
-  }
-  
-  .good-luck-text {
-    font-size: 20px !important;
-    bottom: 6% !important;
-  }
-  
-  .logo-image {
-    max-height: 250px !important;
-    bottom: 5% !important;
-    left: 3% !important;
-    transform: scale(0.7) !important;
-  }
-  
-  .notification-container {
-    padding-left: 30px !important;
-    padding-top: 5px !important;
-  }
+.small-screen img {
+  max-height: 250px !important;
+  bottom: 5% !important;
+  left: 3% !important;
+  transform: scale(0.7) !important;
 }
 </style>
