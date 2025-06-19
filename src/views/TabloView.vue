@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch, onUnmounted } from 'vue';
 import { useQuery, useSubscription } from '@vue/apollo-composable';
 import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
@@ -25,6 +25,26 @@ const tablo_status = useQuery(
 const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-only' });
 const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
 let queueForNotification: Talon[] = [];
+let settingsRefreshInterval: number | null = null;
+
+// Периодическое обновление статуса столов
+const fetchActiveLocations = async () => {
+  try {
+    const response = await fetch(import.meta.env.VITE_API_URL + '/queue/info');
+    const data = await response.json();
+    const locations = data.locations;
+    
+    // Очищаем и обновляем активные столы
+    active_locations.length = 0;
+    for (const loc of locations) {
+      if (loc.settings !== null) {
+        active_locations.push(loc.name);
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при обновлении статуса столов:', error);
+  }
+};
 
 setInterval(() => {
   if (!currentNotification.show) {
@@ -100,45 +120,58 @@ watch(
 watch(
   data,
   () => {
-    data_for_show.length = 0;
-    let locs = [...active_locations];
-
-    for (const tal of data.talons) {
-      if (tal.location) {
-        data_for_show.push(tal);
-        let ind = locs.indexOf(tal.location);
-        if (ind === -1) {
-          active_locations.push(tal.location);
-          continue;
-        }
-        locs.splice(ind, 1);
-      }
-    }
-
-    for (const loc of locs) {
-      data_for_show.push({ name: undefined, location: loc });
-    }
-
-    data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
+    updateDataForShow();
   },
   { deep: true }
 );
 
-onMounted(() => {
-  fetch(import.meta.env.VITE_API_URL + '/queue/info', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then(async (response) => {
-    const locations = (await response.json()).locations;
-    for (const loc of locations) {
-      if (loc.settings !== null) {
-        active_locations.push(loc.name);
+watch(
+  active_locations,
+  () => {
+    updateDataForShow();
+  },
+  { deep: true }
+);
+
+function updateDataForShow() {
+  data_for_show.length = 0;
+  const locs = [...active_locations];
+
+  // Добавляем активные талоны
+  for (const tal of data.talons) {
+    if (tal.location) {
+      data_for_show.push(tal);
+      const ind = locs.indexOf(tal.location);
+      if (ind !== -1) {
+        locs.splice(ind, 1);
       }
     }
-    tablo_status_enabled.value = true;
-  });
+  }
+
+  // Добавляем свободные столы
+  for (const loc of locs) {
+    data_for_show.push({ name: undefined, location: loc });
+  }
+
+  // Сортируем по номеру стола
+  data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
+}
+
+onMounted(() => {
+  // Первоначальная загрузка активных столов
+  fetchActiveLocations();
+  
+  // Настройка периодического обновления
+  settingsRefreshInterval = setInterval(fetchActiveLocations, 5000);
+  
+  // Включаем запрос статуса табло
+  tablo_status_enabled.value = true;
+});
+
+onUnmounted(() => {
+  if (settingsRefreshInterval) {
+    clearInterval(settingsRefreshInterval);
+  }
 });
 </script>
 
