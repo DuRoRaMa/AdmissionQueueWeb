@@ -26,6 +26,12 @@ const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-on
 const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
 let queueForNotification: Talon[] = [];
 let settingsRefreshInterval: number | null = null;
+const isSmallScreen = ref(false);
+
+// Проверка размера экрана
+const checkScreenSize = () => {
+  isSmallScreen.value = window.innerWidth <= 1260 && window.innerHeight <= 260;
+};
 
 // Периодическое обновление статуса столов
 const fetchActiveLocations = async () => {
@@ -166,17 +172,22 @@ onMounted(() => {
   
   // Включаем запрос статуса табло
   tablo_status_enabled.value = true;
+  
+  // Инициализация отслеживания размера экрана
+  checkScreenSize();
+  window.addEventListener('resize', checkScreenSize);
 });
 
 onUnmounted(() => {
   if (settingsRefreshInterval) {
     clearInterval(settingsRefreshInterval);
   }
+  window.removeEventListener('resize', checkScreenSize);
 });
 </script>
 
 <template>
-  <div style="margin: 32px">
+  <div style="margin: 32px" :class="{ 'small-screen': isSmallScreen }">
     <HeaderPanel></HeaderPanel>
     <div class="hor-line"></div>
     <div class="up-ver-line"></div>
@@ -198,7 +209,7 @@ onUnmounted(() => {
       <div class="column">
         <div class="columns is-multiline" style="padding: 1%">
           <div class="column is-full" style="padding-left: 60px; padding-top: 10px">
-            <div v-if="currentNotification.show">
+            <div v-if="currentNotification.show" class="notification-content">
               <p style="font-size: 4em; color: black; font-family: 'HeliosC'; font-weight: 700">
                 Талон
               </p>
@@ -319,5 +330,49 @@ html {
   top: 50%;
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
+}
+
+/* Адаптивные стили для маленьких экранов */
+.small-screen .notification-content {
+  transform: scale(0.85);
+  transform-origin: top left;
+  padding-top: 5px;
+}
+
+.small-screen .notification-content p {
+  line-height: 1.2 !important;
+  margin-bottom: 0.2em !important;
+}
+
+.small-screen .notification-content p:first-child {
+  font-size: 3em !important;
+}
+
+.small-screen .notification-content p:nth-child(2) {
+  font-size: 5em !important;
+}
+
+.small-screen .notification-content p:nth-child(3) {
+  font-size: 3.5em !important;
+}
+
+.small-screen .notification-content p:nth-child(4) {
+  font-size: 4.5em !important;
+}
+
+.small-screen .up-ver-line {
+  height: 70vh;
+}
+
+.small-screen p[style*="bottom: 4%"] {
+  font-size: 20px !important;
+  bottom: 6% !important;
+}
+
+.small-screen img {
+  max-height: 250px !important;
+  bottom: 5% !important;
+  left: 3% !important;
+  transform: scale(0.7) !important;
 }
 </style>
