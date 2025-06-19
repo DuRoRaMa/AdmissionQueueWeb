@@ -19,8 +19,13 @@ let loadingSave = ref(false);
 const dataLength = computed(() => {
   return info.locations.length != 0;
 });
+
 onMounted(() => {
   console.log('Settings loaded');
+  loadSettings();
+});
+
+function loadSettings() {
   getAPIData(
     '/queue/operator/settings',
     auth,
@@ -31,16 +36,7 @@ onMounted(() => {
         auth,
         (response) => {
           Object.assign(info, response.data);
-          for (let loc_i in info.locations) {
-            if (
-              info.locations[loc_i].settings !== null &&
-              currentState.location !== info.locations[loc_i].id
-            ) {
-              info.locations[loc_i].disabled = true;
-            } else {
-              info.locations[loc_i].disabled = false;
-            }
-          }
+          updateLocationDisabledStatus();
         },
         (error) => {
           $buefy.toast.open({
@@ -55,10 +51,34 @@ onMounted(() => {
       });
     }
   );
-});
+}
+
+function updateLocationDisabledStatus() {
+  for (let loc_i in info.locations) {
+    if (
+      info.locations[loc_i].settings !== null &&
+      currentState.location !== info.locations[loc_i].id
+    ) {
+      info.locations[loc_i].disabled = true;
+    } else {
+      info.locations[loc_i].disabled = false;
+    }
+  }
+}
+
 function saveSettings() {
   loadingSave.value = true;
   patchAPIData(`/queue/operator/settings/`, currentState, auth, () => {
+    // Отправляем уведомление об обновлении
+    fetch(`${import.meta.env.VITE_API_URL}/queue/notify_settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'settings_updated' })
+    });
+    
+    // Обновляем статусы столов
+    loadSettings();
+    
     loadingSave.value = false;
     $buefy.notification.open({
       message: `Настройки оператора успешно сохранены`,
@@ -69,6 +89,7 @@ function saveSettings() {
   });
 }
 </script>
+
 <template>
   <section class="hero is-medium container">
     <div class="hero-body">
@@ -89,7 +110,6 @@ function saveSettings() {
             </b-select>
             <b-skeleton v-else :animated="true"></b-skeleton>
           </b-field>
-          <!-- <b-switch v-model="currentState.automatic_assignment">Автоматическое назначение</b-switch> -->
           <div class="block">
             <b-checkbox
               v-model="currentState.purposes"
@@ -109,6 +129,7 @@ function saveSettings() {
     </div>
   </section>
 </template>
+
 <style>
 option:disabled {
   background-color: grey;
