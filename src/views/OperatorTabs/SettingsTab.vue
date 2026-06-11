@@ -68,25 +68,23 @@ function updateLocationDisabledStatus() {
 
 function saveSettings() {
   loadingSave.value = true;
-  patchAPIData(`/queue/operator/settings/`, currentState, auth, () => {
-    // Отправляем уведомление об обновлении
-    fetch(`${import.meta.env.VITE_API_URL}/queue/notify_settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'settings_updated' })
-    });
-    
-    // Обновляем статусы столов
-    loadSettings();
-    
-    loadingSave.value = false;
-    $buefy.notification.open({
-      message: `Настройки оператора успешно сохранены`,
-      duration: 5000,
-      type: 'is-success',
-      pauseOnHover: true
-    });
-  });
+
+  patchAPIData(
+    '/queue/operator/settings/',
+    currentState,
+    auth,
+    () => {
+      loadSettings();
+      loadingSave.value = false;
+
+      $buefy.notification.open({
+        message: 'Настройки оператора успешно сохранены',
+        duration: 5000,
+        type: 'is-success',
+        pauseOnHover: true
+      });
+    }
+  );
 }
 </script>
 

@@ -14,7 +14,7 @@ export interface TalonPurpose {
   name: string
   description: string
 }
-export interface QueueStatsSummary {
+export interface StatisticsSummary {
   total: number;
   waiting: number;
   assigned: number;
@@ -38,11 +38,12 @@ export interface QueueStatsByDay {
   redirected: number;
 }
 
-export interface QueueStatsByHour {
-  hour: string;
-  total: number;
-  completed: number;
-  cancelled: number;
+export interface HourStatistics {
+  hour: string
+  created: number
+  completed: number
+  cancelled: number
+  redirected: number
 }
 
 export interface QueueStatsByPurpose {

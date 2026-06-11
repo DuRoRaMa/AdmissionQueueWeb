@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getAPIData, postAPIData } from '@/axios';
-import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
+import { computed, getCurrentInstance, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useAuth } from 'vue-auth3';
 import type { OperatorSettings } from '@/types';
 import { useQuery } from '@vue/apollo-composable';
@@ -8,10 +8,28 @@ import { GET_TALON_BY_ID } from '@/queries';
 import HelpModalForm from '@/components/HelpModalForm.vue';
 import ConfirmNewTalonForm from '@/components/OperatorPage/ConfirmNewTalonForm.vue';
 import RedirectTalonForm from '@/components/OperatorPage/RedirectTalonForm.vue';
+import IncomingRedirectModal from '@/components/OperatorPage/IncomingRedirectModal.vue';
 import { useStopwatch } from 'vue-timer-hook';
 import { useOperatorTalonStore } from '@/stores/OperatorTalonStore';
 import { storeToRefs } from 'pinia';
-
+interface IncomingRedirectEvent {
+  event: 'talon_redirected'
+  talon: {
+    id: number
+    name: string
+    purpose: string
+    action: string
+  }
+  comment: string
+  from_operator: {
+    id: number
+    name: string
+  }
+  location?: {
+    id: number
+    name: string
+  }
+}
 const stopWatch = useStopwatch(0, false);
 const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
 const auth = useAuth();
@@ -19,6 +37,9 @@ const operatorTalonStore = useOperatorTalonStore();
 const { currentTalonId } = storeToRefs(operatorTalonStore);
 let currentSettings: OperatorSettings | null = null;
 const currentTalon = ref({});
+let operatorNotificationsSocket: WebSocket | null = null
+let operatorNotificationsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let operatorNotificationsStopped = false;
 const enabledTalonById = ref(false);
 const talonStatus = computed(() => {
   if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
@@ -92,6 +113,154 @@ watch(
   },
   { immediate: true }
 );
+function showIncomingRedirectModal(
+  redirect: IncomingRedirectEvent
+) {
+  $buefy.modal.open({
+    component: IncomingRedirectModal,
+    props: {
+      redirect
+    },
+    events: {
+      close: () => {
+        operatorTalonStore.setCurrentTalonId(
+          redirect.talon.id
+        )
+
+        enabledTalonById.value = true
+
+        getCurrentTalon()
+
+        window.setTimeout(() => {
+          talonById.refetch()
+        }, 100)
+      }
+    },
+    hasModalCard: true,
+    trapFocus: true,
+    canCancel: false
+  })
+}
+function getOperatorNotificationsSocketUrl(): string | null {
+  const token = auth.token();
+
+  if (!token) {
+    return null;
+  }
+
+  const configuredWsUrl = String(
+    import.meta.env.VITE_WS_URL || ''
+  ).replace(/\/$/, '');
+
+  if (configuredWsUrl) {
+    return (
+      `${configuredWsUrl}/ws/operator/notifications/` +
+      `?token=${encodeURIComponent(String(token))}`
+    );
+  }
+
+  const apiUrl = String(
+    import.meta.env.VITE_API_URL || window.location.origin
+  );
+  const socketBaseUrl = apiUrl
+    .replace(/\/api\/v1\/?$/, '')
+    .replace(/^http:/, 'ws:')
+    .replace(/^https:/, 'wss:')
+    .replace(/\/$/, '');
+
+  return (
+    `${socketBaseUrl}/ws/operator/notifications/` +
+    `?token=${encodeURIComponent(String(token))}`
+  );
+}
+
+function scheduleOperatorNotificationsReconnect() {
+  if (operatorNotificationsStopped) {
+    return;
+  }
+
+  if (operatorNotificationsReconnectTimer) {
+    clearTimeout(operatorNotificationsReconnectTimer);
+  }
+
+  operatorNotificationsReconnectTimer = window.setTimeout(() => {
+    operatorNotificationsReconnectTimer = null;
+    connectOperatorNotifications();
+  }, 3000);
+}
+
+function connectOperatorNotifications() {
+  if (operatorNotificationsStopped) {
+    return;
+  }
+
+  if (
+    operatorNotificationsSocket?.readyState === WebSocket.OPEN ||
+    operatorNotificationsSocket?.readyState === WebSocket.CONNECTING
+  ) {
+    return;
+  }
+
+  const socketUrl = getOperatorNotificationsSocketUrl();
+
+  if (!socketUrl) {
+    console.warn(
+      'WebSocket уведомлений не подключён: токен авторизации отсутствует'
+    );
+    scheduleOperatorNotificationsReconnect();
+    return;
+  }
+
+  operatorNotificationsSocket = new WebSocket(socketUrl);
+
+  operatorNotificationsSocket.onopen = () => {
+    console.info('Подключены уведомления оператора');
+  };
+
+  operatorNotificationsSocket.onmessage = (messageEvent) => {
+    try {
+      const data = JSON.parse(
+        messageEvent.data
+      ) as IncomingRedirectEvent;
+
+      if (data.event !== 'talon_redirected') {
+        return;
+      }
+
+      operatorTalonStore.setCurrentTalonId(data.talon.id);
+      enabledTalonById.value = true;
+
+      void talonById.refetch();
+      showIncomingRedirectModal(data);
+    } catch (error) {
+      console.error(
+        'Не удалось обработать уведомление оператора',
+        error
+      );
+    }
+  };
+
+  operatorNotificationsSocket.onerror = (error) => {
+    console.error(
+      'Ошибка WebSocket уведомлений оператора',
+      error
+    );
+  };
+
+  operatorNotificationsSocket.onclose = (event) => {
+    console.warn(
+      'WebSocket уведомлений оператора закрыт',
+      {
+        code: event.code,
+        reason: event.reason || 'Причина не передана'
+      }
+    );
+
+    operatorNotificationsSocket = null;
+    scheduleOperatorNotificationsReconnect();
+  };
+}
+
 function getNextTalon() {
   disabledStateOfButtons.value.next = true;
   getAPIData(
@@ -275,7 +444,26 @@ function getCurrentTalon() {
     { action: 'current' }
   );
 }
-onMounted(getCurrentTalon);
+onMounted(() => {
+  operatorNotificationsStopped = false;
+  getCurrentTalon();
+  connectOperatorNotifications();
+});
+
+onBeforeUnmount(() => {
+  operatorNotificationsStopped = true;
+
+  if (operatorNotificationsReconnectTimer) {
+    clearTimeout(operatorNotificationsReconnectTimer);
+    operatorNotificationsReconnectTimer = null;
+  }
+
+  if (operatorNotificationsSocket) {
+    operatorNotificationsSocket.onclose = null;
+    operatorNotificationsSocket.close();
+    operatorNotificationsSocket = null;
+  }
+});
 </script>
 <template>
   <section class="operator-workspace">

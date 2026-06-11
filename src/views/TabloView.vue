@@ -1,188 +1,277 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch, onUnmounted } from 'vue';
-import { useQuery, useSubscription } from '@vue/apollo-composable';
+import {
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watch
+} from 'vue';
+import { useSubscription } from '@vue/apollo-composable';
+
 import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
-import { type tabloTalons, TABLO_STATUS } from '@/queries/tabloTalons';
-import { type talonLogs, TALON_LOG_SUB } from '@/queries/talonLogSub';
+import {
+  type talonLogs,
+  TALON_LOG_SUB
+} from '@/queries/talonLogSub';
 
 const talonsPerCol = 7;
+
 interface Talon {
   id: number;
   name: string;
   location: string;
 }
 
-const data = reactive({ talons: [] as Talon[], lastTalonLogId: -1 });
-const data_for_show = reactive([] as { name: string | undefined; location: string }[]);
-const active_locations = reactive([] as string[]);
-const tablo_status_enabled = ref(false);
-const tablo_status = useQuery(
-  TABLO_STATUS,
-  {},
-  { fetchPolicy: 'network-only', enabled: tablo_status_enabled }
-);
-const { result } = useSubscription(TALON_LOG_SUB, {}, { fetchPolicy: 'network-only' });
-const currentNotification = reactive({ name: 'З - 01', location: '14', show: false });
-let queueForNotification: Talon[] = [];
-let settingsRefreshInterval: number | null = null;
-const isSmallScreen = ref(false);
+interface PublicTalon {
+  id: number;
+  name: string;
+  action: string;
+  purpose: string;
+}
 
-// Проверка размера экрана
-const checkScreenSize = () => {
-  isSmallScreen.value = window.innerWidth <= 1260 && window.innerHeight <= 260;
-};
+interface PublicLocation {
+  id: number;
+  name: string;
+  is_operator_assigned: boolean;
+  talon: PublicTalon | null;
+}
 
-// Периодическое обновление статуса столов
-const fetchActiveLocations = async () => {
-  try {
-    const response = await fetch(import.meta.env.VITE_API_URL + '/queue/info');
-    const data = await response.json();
-    const locations = data.locations;
-    
-    // Очищаем и обновляем активные столы
-    active_locations.length = 0;
-    for (const loc of locations) {
-      if (loc.settings !== null) {
-        active_locations.push(loc.name);
-      }
-    }
-  } catch (error) {
-    console.error('Ошибка при обновлении статуса столов:', error);
-  }
-};
+interface PublicQueueState {
+  locations: PublicLocation[];
+}
 
-setInterval(() => {
-  if (!currentNotification.show) {
-    showNotification();
-  }
-}, 1000);
-
-tablo_status.onResult((res) => {
-  if (res.loading) return;
-  let tablo_talons: tabloTalons[] = res.data.tabloTalons;
-
-  const newTalons = tablo_talons.map((talon) => {
-    const assigned_logs = talon.logs.filter((x: any) => x.action === 'Assigned');
-    const created_by = assigned_logs.at(-1)?.createdBy;
-    const place = created_by?.operatorSettings?.location?.name;
-    return { id: talon.id, name: talon.name, location: place };
-  });
-
-  data.talons = newTalons.sort((a, b) => Number(a.location) - Number(b.location));
-  data.lastTalonLogId = res.data.lastTalonLog.id;
+const data = reactive({
+  talons: [] as Talon[],
+  lastTalonLogId: -1
 });
 
-function showNotification() {
-  let notif = queueForNotification.shift();
-  if (notif) {
-    currentNotification.name = notif.name;
-    currentNotification.location = notif.location;
-    currentNotification.show = true;
-    fetch('http://localhost:8001/tts', {
-      method: 'POST',
-      body: JSON.stringify(notif),
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: '*/*',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-    setTimeout(() => {
-      currentNotification.show = false;
-    }, 10000);
+const data_for_show = reactive(
+  [] as {
+    name: string | undefined;
+    location: string;
+  }[]
+);
+
+const currentNotification = reactive({
+  name: 'З - 01',
+  location: '14',
+  show: false
+});
+
+const isSmallScreen = ref(false);
+const isStateLoading = ref(false);
+
+let queueForNotification: Talon[] = [];
+let stateRefreshInterval: number | null = null;
+let notificationInterval: number | null = null;
+
+const { result } = useSubscription(
+  TALON_LOG_SUB,
+  {},
+  {
+    fetchPolicy: 'network-only'
   }
+);
+
+const checkScreenSize = () => {
+  isSmallScreen.value =
+    window.innerWidth <= 1260 &&
+    window.innerHeight <= 260;
+};
+
+function rebuildRows(
+  locations: PublicLocation[]
+): void {
+  data.talons = locations
+    .filter(
+      (item): item is PublicLocation & {
+        talon: PublicTalon;
+      } => item.talon !== null
+    )
+    .map((item) => ({
+      id: item.talon.id,
+      name: item.talon.name,
+      location: item.name
+    }));
+
+  data_for_show.length = 0;
+
+  for (const item of locations) {
+    data_for_show.push({
+      name: item.talon?.name,
+      location: item.name
+    });
+  }
+
+  data_for_show.sort(
+    (a, b) =>
+      Number(a.location) - Number(b.location)
+  );
+}
+
+async function fetchQueueState(): Promise<void> {
+  if (isStateLoading.value) {
+    return;
+  }
+
+  isStateLoading.value = true;
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/queue/public/state/`,
+      {
+        cache: 'no-store'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Не удалось получить состояние табло: HTTP ${response.status}`
+      );
+    }
+
+    const responseData =
+      (await response.json()) as PublicQueueState;
+
+    rebuildRows(responseData.locations ?? []);
+  } catch (error) {
+    console.error(
+      'Ошибка обновления состояния табло:',
+      error
+    );
+  } finally {
+    isStateLoading.value = false;
+  }
+}
+
+function showNotification(): void {
+  const notification = queueForNotification.shift();
+
+  if (!notification) {
+    return;
+  }
+
+  currentNotification.name = notification.name;
+  currentNotification.location =
+    notification.location;
+  currentNotification.show = true;
+
+  fetch('http://localhost:8001/tts', {
+    method: 'POST',
+    body: JSON.stringify(notification),
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: '*/*',
+      'Access-Control-Allow-Origin': '*'
+    }
+  }).catch((error) => {
+    console.error(
+      'Ошибка отправки текста в TTS:',
+      error
+    );
+  });
+
+  window.setTimeout(() => {
+    currentNotification.show = false;
+  }, 10000);
 }
 
 watch(
   result,
-  (res) => {
-    const log: talonLogs = res.talonLogs;
-    switch (log.action) {
-      case 'Assigned':
-        const talon: Talon = {
-          id: log.talon.id,
-          name: log.talon.name,
-          location: log.createdBy.operatorSettings!.location.name
-        };
-        queueForNotification.push(talon);
-        if (log.id > data.lastTalonLogId) {
-          data.talons = [talon, ...data.talons];
-        }
-        break;
-      case 'Completed':
-      case 'Cancelled':
-        data.talons = data.talons.filter((x) => x.id !== log.talon.id);
-        break;
-      default:
-        break;
+  async (subscriptionResult) => {
+    if (!subscriptionResult?.talonLogs) {
+      return;
     }
-    if (log.id > data.lastTalonLogId) data.lastTalonLogId = log.id;
-  },
-  { immediate: false }
-);
 
-watch(
-  data,
-  () => {
-    updateDataForShow();
-  },
-  { deep: true }
-);
+    const log: talonLogs =
+      subscriptionResult.talonLogs;
 
-watch(
-  active_locations,
-  () => {
-    updateDataForShow();
-  },
-  { deep: true }
-);
+    const logId = Number(log.id);
 
-function updateDataForShow() {
-  data_for_show.length = 0;
-  const locs = [...active_locations];
+    if (
+      Number.isFinite(logId) &&
+      logId <= data.lastTalonLogId
+    ) {
+      return;
+    }
 
-  // Добавляем активные талоны
-  for (const tal of data.talons) {
-    if (tal.location) {
-      data_for_show.push(tal);
-      const ind = locs.indexOf(tal.location);
-      if (ind !== -1) {
-        locs.splice(ind, 1);
+    if (Number.isFinite(logId)) {
+      data.lastTalonLogId = logId;
+    }
+
+    /*
+     * GraphQL больше не является источником
+     * состояния табло. После любого события
+     * перечитываем готовое состояние REST.
+     */
+    await fetchQueueState();
+
+    /*
+     * Голосовое уведомление создаём только
+     * для назначения талона оператору.
+     */
+    if (log.action === 'Assigned') {
+      const location =
+        log.createdBy?.operatorSettings
+          ?.location?.name;
+
+      if (location) {
+        queueForNotification.push({
+          id: Number(log.talon.id),
+          name: log.talon.name,
+          location
+        });
       }
     }
+  },
+  {
+    immediate: false
   }
+);
 
-  // Добавляем свободные столы
-  for (const loc of locs) {
-    data_for_show.push({ name: undefined, location: loc });
-  }
+onMounted(async () => {
+  await fetchQueueState();
 
-  // Сортируем по номеру стола
-  data_for_show.sort((a, b) => Number(a.location) - Number(b.location));
-}
+  stateRefreshInterval = window.setInterval(
+    fetchQueueState,
+    15000
+  );
 
-onMounted(() => {
-  // Первоначальная загрузка активных столов
-  fetchActiveLocations();
-  
-  // Настройка периодического обновления
-  settingsRefreshInterval = setInterval(fetchActiveLocations, 5000);
-  
-  // Включаем запрос статуса табло
-  tablo_status_enabled.value = true;
-  
-  // Инициализация отслеживания размера экрана
+  notificationInterval = window.setInterval(
+    () => {
+      if (!currentNotification.show) {
+        showNotification();
+      }
+    },
+    1000
+  );
+
   checkScreenSize();
-  window.addEventListener('resize', checkScreenSize);
+  window.addEventListener(
+    'resize',
+    checkScreenSize
+  );
 });
 
 onUnmounted(() => {
-  if (settingsRefreshInterval) {
-    clearInterval(settingsRefreshInterval);
+  if (stateRefreshInterval !== null) {
+    window.clearInterval(
+      stateRefreshInterval
+    );
   }
-  window.removeEventListener('resize', checkScreenSize);
+
+  if (notificationInterval !== null) {
+    window.clearInterval(
+      notificationInterval
+    );
+  }
+
+  window.removeEventListener(
+    'resize',
+    checkScreenSize
+  );
 });
 </script>
 
