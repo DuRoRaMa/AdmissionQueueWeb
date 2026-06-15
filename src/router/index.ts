@@ -44,17 +44,9 @@ const router = createRouter({
       }
     },
     {
-      path: '/queue/operator/settings',
-      name: 'operator_settings',
-      component: () => import('../views/OperatorSettingsView.vue'),
-      meta: {
-        auth: ['Operators']
-      }
-    },
-    {
       path: '/queue/operator',
       name: 'operator',
-      component: () => import('../views/OperatorView.vue'),
+      component: () => import('../views/OperatorTabsView.vue'),
       meta: {
         auth: ['Operators']
       }
@@ -62,9 +54,25 @@ const router = createRouter({
     {
       path: '/queue/registrator',
       name: 'registrator',
-      component: () => import('../views/RegistatorView.vue'),
+      component: () => import('../views/RegistratorTabsView.vue'),
       meta: {
         auth: ['Registrators']
+      }
+    },
+    {
+      path: '/queue/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      meta: {
+        auth: ['Admins']
+      }
+    },
+    {
+      path: '/queue/statistics',
+      name: 'statistics',
+      component: () => import('../views/StatisticsView.vue'),
+      meta: {
+        auth: ['Admins']
       }
     }
   ]

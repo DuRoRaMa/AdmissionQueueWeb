@@ -19,45 +19,81 @@ let loadingSave = ref(false);
 const dataLength = computed(() => {
   return info.locations.length != 0;
 });
-onMounted(() => {
-  getAPIData('/queue/operator/settings', auth, (response) => {
-    Object.assign(currentState, response.data);
 
-    getAPIData('/queue/info', auth, (response) => {
-      Object.assign(info, response.data);
-      for (let loc_i in info.locations) {
-        if (
-          info.locations[loc_i].settings !== null &&
-          currentState.location !== info.locations[loc_i].id
-        ) {
-          info.locations[loc_i].disabled = true;
-        } else {
-          info.locations[loc_i].disabled = false;
-        }
-      }
-    });
-  });
+onMounted(() => {
+  console.log('Settings loaded');
+  loadSettings();
 });
+
+function loadSettings() {
+  getAPIData(
+    '/queue/operator/settings',
+    auth,
+    (response) => {
+      Object.assign(currentState, response.data);
+      getAPIData(
+        '/queue/info',
+        auth,
+        (response) => {
+          Object.assign(info, response.data);
+          updateLocationDisabledStatus();
+        },
+        (error) => {
+          $buefy.toast.open({
+            message: error
+          });
+        }
+      );
+    },
+    (error) => {
+      $buefy.toast.open({
+        message: error
+      });
+    }
+  );
+}
+
+function updateLocationDisabledStatus() {
+  for (let loc_i in info.locations) {
+    if (
+      info.locations[loc_i].settings !== null &&
+      currentState.location !== info.locations[loc_i].id
+    ) {
+      info.locations[loc_i].disabled = true;
+    } else {
+      info.locations[loc_i].disabled = false;
+    }
+  }
+}
+
 function saveSettings() {
   loadingSave.value = true;
-  patchAPIData(`/queue/operator/settings/`, currentState, auth, () => {
-    loadingSave.value = false;
-    $buefy.notification.open({
-      message: `Настройки оператора успешно сохранены`,
-      duration: 5000,
-      type: 'is-success',
-      pauseOnHover: true
-    });
-  });
+
+  patchAPIData(
+    '/queue/operator/settings/',
+    currentState,
+    auth,
+    () => {
+      loadSettings();
+      loadingSave.value = false;
+
+      $buefy.notification.open({
+        message: 'Настройки оператора успешно сохранены',
+        duration: 5000,
+        type: 'is-success',
+        pauseOnHover: true
+      });
+    }
+  );
 }
 </script>
+
 <template>
   <section class="hero is-medium container">
     <div class="hero-body">
       <div class="columns">
         <div class="column is-one-quarter"></div>
         <div class="column">
-          <p class="title">Настройки оператора</p>
           <b-field label="Рабочее место">
             <b-select v-if="dataLength" v-model="currentState.location" placeholder="Выберите">
               <option :value="null" :key="0">Освободить рабочее место</option>
@@ -72,7 +108,6 @@ function saveSettings() {
             </b-select>
             <b-skeleton v-else :animated="true"></b-skeleton>
           </b-field>
-          <!-- <b-switch v-model="currentState.automatic_assignment">Автоматическое назначение</b-switch> -->
           <div class="block">
             <b-checkbox
               v-model="currentState.purposes"
@@ -85,7 +120,6 @@ function saveSettings() {
           </div>
           <div class="buttons">
             <b-button @click="saveSettings" :loading="loadingSave">Сохранить</b-button>
-            <b-button tag="router-link" :to="{ name: 'operator' }">Продолжить</b-button>
           </div>
         </div>
         <div class="column is-one-quarter"></div>
@@ -93,6 +127,7 @@ function saveSettings() {
     </div>
   </section>
 </template>
+
 <style>
 option:disabled {
   background-color: grey;

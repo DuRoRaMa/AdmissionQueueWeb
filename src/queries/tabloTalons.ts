@@ -9,6 +9,7 @@ export const TABLO_STATUS = gql`
         id
         action
         createdBy {
+          username
           operatorSettings {
             location {
               name
