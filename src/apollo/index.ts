@@ -2,52 +2,58 @@ import { ApolloClient, createHttpLink, InMemoryCache, split } from '@apollo/clie
 import { getMainDefinition } from '@apollo/client/utilities';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
+import { setContext } from '@apollo/client/link/context';
 
-function getCookie(name: string): string {
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || ''
-  }
-
-  return ''
+function getAuthToken(): string {
+  return localStorage.getItem('token') || '';
 }
-// HTTP connection to the API
+
 const httpLink = createHttpLink({
-  // You should use an absolute URL here
-  uri: import.meta.env.VITE_BASE_URL + '/graphql'
+  uri: `${import.meta.env.VITE_BASE_URL}/graphql`
 });
+
+const authLink = setContext((_, { headers }) => {
+  const token = getAuthToken();
+
+  return {
+    headers: {
+      ...headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  };
+});
+
 const wsLink = new GraphQLWsLink(
   createClient({
-    url: import.meta.env.VITE_WS_URL + '/graphql/',
-    connectionParams: () => ({
-      // Передаём токен из localStorage (если используется JWT)
-      token: localStorage.getItem('token'),
-      // Или сессионные cookies (если Django SessionAuth)
-      headers: {
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-    }),
-    shouldRetry: () => true,  // Автоматически переподключаться
+    url: `${import.meta.env.VITE_WS_URL}/graphql/`,
+    connectionParams: () => {
+      const token = getAuthToken();
+
+      return {
+        ...(token ? { token } : {})
+      };
+    },
+    shouldRetry: () => true
   })
 );
 
 const link = split(
-  // split based on operation type
   ({ query }) => {
     const definition = getMainDefinition(query);
-    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
+
+    return (
+      definition.kind === 'OperationDefinition' &&
+      definition.operation === 'subscription'
+    );
   },
   wsLink,
-  httpLink
+  authLink.concat(httpLink)
 );
-// Cache implementation
+
 const cache = new InMemoryCache();
 
-// Create the apollo client
 const apolloClient = new ApolloClient({
-  link: link,
+  link,
   cache
 });
 

@@ -2,6 +2,18 @@ import type { AxiosError, AxiosResponse } from 'axios';
 import APIAxios from './instance';
 import type { Auth } from 'vue-auth3';
 
+function getAuthHeaders(auth: Auth) {
+  const token = auth.token();
+
+  if (!token) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${token}`
+  };
+}
+
 export function getAPIData(
   url: string,
   auth: Auth,
@@ -10,55 +22,65 @@ export function getAPIData(
   params: any = {}
 ) {
   APIAxios.get(url, {
-    headers: { Authorization: 'Bearer ' + auth.token() },
-    params: params
+    headers: getAuthHeaders(auth),
+    params
   })
-    .catch(error_func)
     .then((response) => {
-      if (response === undefined) return;
       func(response);
-    });
+    })
+    .catch(error_func);
 }
 
-export function putAPIData(url: string, data: any, auth: Auth, func: (r: AxiosResponse) => void) {
+export function putAPIData(
+  url: string,
+  data: any,
+  auth: Auth,
+  func: (r: AxiosResponse) => void,
+  error_func: (r: AxiosError) => void = () => {},
+  params: any = {}
+) {
   APIAxios.put(url, data, {
-    headers: { Authorization: 'Bearer ' + auth.token() }
+    headers: getAuthHeaders(auth),
+    params
   })
-    .catch((err) => {
-      console.error(err);
-    })
     .then((response) => {
-      if (response === undefined) return;
       func(response);
-    });
+    })
+    .catch(error_func);
 }
-export function patchAPIData(url: string, data: any, auth: Auth, func: (r: AxiosResponse) => void) {
+
+export function patchAPIData(
+  url: string,
+  data: any,
+  auth: Auth,
+  func: (r: AxiosResponse) => void,
+  error_func: (r: AxiosError) => void = () => {},
+  params: any = {}
+) {
   APIAxios.patch(url, data, {
-    headers: { Authorization: 'Bearer ' + auth.token() }
+    headers: getAuthHeaders(auth),
+    params
   })
-    .catch((err) => {
-      console.error(err);
-    })
     .then((response) => {
-      if (response === undefined) return;
       func(response);
-    });
+    })
+    .catch(error_func);
 }
+
 export function postAPIData(
   url: string,
-  data: Object = {},
+  data: object = {},
   auth: Auth,
   func: (r: AxiosResponse) => void = () => {},
   error_func: (r: AxiosError) => void = () => {},
   params: any = {}
 ) {
   APIAxios.post(url, data, {
-    headers: { Authorization: 'Bearer ' + auth.token() },
-    params: params
+    headers: getAuthHeaders(auth),
+    params
   })
-    .catch(error_func)
     .then((response) => {
-      if (response === undefined) return;
       func(response);
-    });
+    })
+    .catch(error_func);
 }
