@@ -14,3 +14,10 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:18081:80"
+    networks:
+      - pk_proxy
+
+networks:
+  pk_proxy:
+    external: true
+    name: pk_proxy
