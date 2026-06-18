@@ -12,7 +12,7 @@ let data = reactive([] as in_queue_talon[]);
 const disabled = reactive({} as { [key: number]: boolean });
 let num = 1;
 const lastTimeUpdated = ref<Date>();
-function onSort(field, order) {
+function onSort(field: string, order: string) {
   num = 1;
 }
 async function updateTable() {
@@ -27,32 +27,37 @@ async function updateTable() {
   data.sort((a, b) => a.id - b.id);
   lastTimeUpdated.value = new Date();
 }
-function blackColorClass(row, column) {
+function blackColorClass(row: any, column: any) {
   return { style: { color: 'black' } };
 }
-async function cancelTalon(id: any) {
+async function cancelTalon(id: number) {
   disabled[id] = true;
+
   postAPIData(
     '/queue/registrator/talon/cancel',
     {},
     auth,
-    (response) => {
+    (response: any) => {
       $buefy.notification.open({
-        message: response.data.detail,
+        message: response.data?.detail || 'Талон отменён',
         duration: 3000,
         type: 'is-success',
         pauseOnHover: false
       });
     },
-    (error) => {
+    (error: any) => {
+      const detail = error?.response?.data?.detail;
+
       $buefy.notification.open({
-        message: error.response?.data?.detail,
+        message: detail || 'Не удалось отменить талон',
         duration: 3000,
         type: 'is-danger',
         pauseOnHover: false
       });
+
+      disabled[id] = false;
     },
-    { id: id }
+    { id }
   );
 }
 </script>

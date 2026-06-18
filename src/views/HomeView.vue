@@ -1,30 +1,53 @@
 <script setup lang="ts">
-import { onMounted, reactive, watch } from 'vue';
-import { useUser, useAuth } from 'vue-auth3';
-const auth = useAuth();
-const user = useUser();
-const roles = reactive({ Operators: false, Registrators: false, Admins: false });
-const buttons = reactive([
+import { reactive, watch } from 'vue'
+import { useUser } from 'vue-auth3'
+
+type RoleName = 'Operators' | 'Registrators' | 'Admins'
+
+interface AuthUser {
+  username?: string
+  groups?: string[]
+}
+
+interface HomeButton {
+  if: RoleName
+  name: string
+  text: string
+}
+
+const user = useUser<AuthUser>()
+
+const roles = reactive<Record<RoleName, boolean>>({
+  Operators: false,
+  Registrators: false,
+  Admins: false
+})
+
+const buttons = reactive<HomeButton[]>([
   { if: 'Operators', name: 'operator', text: 'Оператор' },
   { if: 'Registrators', name: 'registrator', text: 'Ресепшен' },
   { if: 'Admins', name: 'dashboard', text: 'Дашборд' }
-]);
+])
+
 watch(
   user,
   () => {
-    if (user.value?.groups) {
-      user.value.groups.forEach((x: string) => {
-        roles[x] = true;
-      });
-    } else {
-      roles.Registrators = false;
-      roles.Operators = false;
-      roles.Admins = false;
-    }
+    roles.Registrators = false
+    roles.Operators = false
+    roles.Admins = false
+
+    const groups = user.value?.groups || []
+
+    groups.forEach((group) => {
+      if (group in roles) {
+        roles[group as RoleName] = true
+      }
+    })
   },
   { immediate: true }
-);
+)
 </script>
+
 <template>
   <section class="hero is-large container">
     <div class="hero-body">

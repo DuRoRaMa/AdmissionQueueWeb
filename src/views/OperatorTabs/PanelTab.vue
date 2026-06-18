@@ -30,21 +30,59 @@ interface IncomingRedirectEvent {
     name: string
   }
 }
-const stopWatch = useStopwatch(0, false);
-const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
-const auth = useAuth();
-const operatorTalonStore = useOperatorTalonStore();
-const { currentTalonId } = storeToRefs(operatorTalonStore);
-let currentSettings: OperatorSettings | null = null;
-const currentTalon = ref({});
+type TalonAction =
+  | 'Assigned'
+  | 'Canceled'
+  | 'Started'
+  | 'Completed'
+  | 'NOT_ASSIGNED'
+  | string
+
+interface PanelLog {
+  id?: number
+  action?: string
+  comment?: string | null
+  createdAt?: string
+  created_at?: string
+  createdBy?: {
+    id?: number
+    username?: string
+  }
+}
+
+interface PanelPurpose {
+  id?: number
+  name?: string
+  code?: string
+}
+
+interface PanelTalon {
+  id?: number
+  name?: string
+  action?: TalonAction
+  purpose?: PanelPurpose | null
+  createdAt?: string
+  created_at?: string
+  logs?: PanelLog[]
+}
+const stopWatch = useStopwatch(0, false)
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy as any
+
+const auth = useAuth()
+const operatorTalonStore = useOperatorTalonStore()
+const { currentTalonId } = storeToRefs(operatorTalonStore)
+
+const currentSettings = ref<OperatorSettings | null>(null)
+const currentTalon = ref<PanelTalon>({})
 let operatorNotificationsSocket: WebSocket | null = null
 let operatorNotificationsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let operatorNotificationsStopped = false;
 const enabledTalonById = ref(false);
-const talonStatus = computed(() => {
-  if (!currentTalon.value?.name) return 'NOT_ASSIGNED';
-  return currentTalon.value.action;
-});
+const talonStatus = computed<TalonAction>(() => {
+  if (!currentTalon.value.name) return 'NOT_ASSIGNED'
+
+  return currentTalon.value.action || 'NOT_ASSIGNED'
+})
 let disabledStateOfButtons = ref({
   next: true,
   notify: true,
@@ -60,9 +98,10 @@ let talonById = useQuery(
   { enabled: enabledTalonById, fetchPolicy: 'cache-and-network' }
 );
 talonById.onResult((res) => {
-  if (res.loading) return null;
-  currentTalon.value = res.data.talon;
-});
+  if (res.loading || !res.data?.talon) return
+
+  currentTalon.value = res.data.talon as PanelTalon
+})
 watch(
   talonStatus,
   (newStatus, oldStatus) => {
@@ -74,7 +113,9 @@ watch(
         disabledStateOfButtons.value.start = true;
         disabledStateOfButtons.value.redirect = true;
         disabledStateOfButtons.value.cancel = true;
-        if (currentSettings?.automatic_assignment) disabledStateOfButtons.value.next = true;
+        if (currentSettings.value?.automatic_assignment) {
+          disabledStateOfButtons.value.next = true
+        }
         break;
       case 'Assigned':
         disabledStateOfButtons.value.next = true;
@@ -92,18 +133,23 @@ watch(
         disabledStateOfButtons.value.redirect = true;
         disabledStateOfButtons.value.cancel = true;
         break;
-      case 'Started':
-        const started = new Date(currentTalon.value.logs.at(-1).createdAt);
-        const offset = (new Date() - started) / 1000;
-        stopWatch.reset(offset, true);
-        disabledStateOfButtons.value.next = true;
-        disabledStateOfButtons.value.new = true;
-        disabledStateOfButtons.value.start = true;
-        disabledStateOfButtons.value.complete = false;
-        disabledStateOfButtons.value.redirect = false;
-        disabledStateOfButtons.value.cancel = false;
-        disabledStateOfButtons.value.notify = true;
-        break;
+      case 'Started': {
+        const logs = currentTalon.value.logs || []
+        const lastLog = logs[logs.length - 1]
+        const started = new Date(lastLog?.createdAt || lastLog?.created_at || Date.now())
+        const offset = Math.max(0, (Date.now() - started.getTime()) / 1000)
+
+        stopWatch.reset(offset, true)
+
+        disabledStateOfButtons.value.next = true
+        disabledStateOfButtons.value.new = true
+        disabledStateOfButtons.value.start = true
+        disabledStateOfButtons.value.complete = false
+        disabledStateOfButtons.value.redirect = false
+        disabledStateOfButtons.value.cancel = false
+        disabledStateOfButtons.value.notify = true
+        break
+      }
       case 'Completed':
         disabledStateOfButtons.value.complete = true;
         break;
@@ -408,7 +454,7 @@ function redirectTalon() {
       redirected: () => {
         currentTalon.value = {};
         enabledTalonById.value = false;
-        operatorTalonStore.setCurrentTalonId(null);
+        operatorTalonStore.setCurrentTalonId(null as any)
         stopWatch.reset(0, false);
       }
     },

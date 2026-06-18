@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { useAuth, useUser } from 'vue-auth3';
-import fefu_logo from '@/assets/FEFU_logo.svg';
-import { ref, watch } from 'vue';
+import { computed } from 'vue'
+import { useAuth, useUser } from 'vue-auth3'
+import fefu_logo from '@/assets/FEFU_logo.svg'
 
-const auth = useAuth();
-const user = useUser();
-const username = ref('');
-watch(user, () => {
-  if (user.value?.groups) {
-    username.value = user.value.username;
-  }
-});
+interface AuthUser {
+  username?: string
+  groups?: string[]
+}
+
+const auth = useAuth()
+const user = useUser<AuthUser>()
+
+const username = computed(() => user.value?.username || '')
 </script>
+
 <template>
   <b-navbar v-show="$route.name !== 'tablo'">
     <template #brand>
@@ -19,9 +21,10 @@ watch(user, () => {
         <b-image :src="fefu_logo" alt="ЭО ПК ДВФУ" />
       </b-navbar-item>
     </template>
+
     <template #start>
-      <b-navbar-item tag="router-link" :to="{ path: '/' }"> Главная </b-navbar-item>
-      <b-navbar-item tag="router-link" :to="{ path: '/tablo' }"> Табло </b-navbar-item>
+      <b-navbar-item tag="router-link" :to="{ path: '/' }">Главная</b-navbar-item>
+      <b-navbar-item tag="router-link" :to="{ path: '/tablo' }">Табло</b-navbar-item>
     </template>
 
     <template #end>
@@ -37,20 +40,13 @@ watch(user, () => {
           >
             Войти
           </b-navbar-item>
+
           <b-navbar-item tag="div" v-else>
-            <!-- <b-navbar-item
-              tag="router-link"
-              :to="{ name: 'profile' }"
-              class="button is-primary"
-              type="is-primary"
-              size="is-medium"
-            >
-              Профиль
-            </b-navbar-item> -->
             <p class="title is-5" style="margin-right: 50px; margin-top: 10px">
-              {{ user.username }}
+              {{ username }}
             </p>
-            <a @click="auth.logout" class="button is-primary"> Выйти </a>
+
+            <a @click="auth.logout" class="button is-primary">Выйти</a>
           </b-navbar-item>
         </div>
       </b-navbar-item>

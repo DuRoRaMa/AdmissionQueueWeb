@@ -9,3 +9,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare module 'vue-auth3/dist/chunk-QALVUXMO.mjs' {
+  export function defineAuthDriver(config: any): any
+}
+
+declare module 'vue-auth3/dist/chunk-3BTIPVYA.mjs' {
+  export function defineHttpDriver(config: any): any
+}

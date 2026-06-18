@@ -168,3 +168,24 @@ export interface QueueStatsFilterOptions {
   operators: QueueStatsFilterOperator[];
   statuses: Record<string, string>;
 }
+export interface QueueStatsSummary {
+  total: number
+  waiting: number
+  assigned: number
+  started: number
+  in_service?: number
+  completed: number
+  cancelled: number
+  redirected?: number
+  avg_wait_seconds?: number
+  avg_service_seconds?: number
+}
+
+export interface QueueStatsByHour {
+  hour: string
+  created: number
+  completed: number
+  cancelled: number
+  total: number
+  redirected?: number
+}

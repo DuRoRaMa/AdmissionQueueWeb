@@ -1,9 +1,26 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
 
-const props = defineProps({ data: Object });
-const series = reactive([] as Object[]);
-const labels = reactive([] as string[]);
+interface RatingOperatorData {
+  data: object[];
+  operator: string[];
+}
+
+const props = withDefaults(
+  defineProps<{
+    data?: RatingOperatorData;
+  }>(),
+  {
+    data: () => ({
+      data: [],
+      operator: []
+    })
+  }
+);
+
+const series = reactive<object[]>([]);
+const labels = reactive<string[]>([]);
+
 const chartOptions = {
   chart: {
     type: 'bar',
@@ -17,31 +34,34 @@ const chartOptions = {
   xaxis: {
     categories: labels
   },
-  // responsive: [
-  //   {
-  //     breakpoint: 480,
-  //     options: {
-  //       chart: {
-  //         width: 300
-  //       },
-  //       legend: {
-  //         position: 'bottom'
-  //       }
-  //     }
-  //   }
-  // ],
-  noData: { text: 'Нет данных' }
+  noData: {
+    text: 'Нет данных'
+  }
 };
+
 const height = computed(() => {
-  return 10 * labels.length;
+  return Math.max(400, 10 * labels.length);
 });
-watch(props, () => {
-  series.splice(0, series.length);
-  labels.splice(0, labels.length);
-  series.push(...props.data.data);
-  labels.push(...props.data.operator);
-});
+
+watch(
+  () => props.data,
+  (newData) => {
+    series.splice(0, series.length);
+    labels.splice(0, labels.length);
+
+    series.push(...newData.data);
+    labels.push(...newData.operator);
+  },
+  { immediate: true }
+);
 </script>
+
 <template>
-  <apexchart type="bar" height="400" width="400" :options="chartOptions" :series="series" />
+  <apexchart
+    type="bar"
+    :height="height"
+    width="400"
+    :options="chartOptions"
+    :series="series"
+  />
 </template>

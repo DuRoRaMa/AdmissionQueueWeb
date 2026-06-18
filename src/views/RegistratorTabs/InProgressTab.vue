@@ -7,7 +7,7 @@ const tablo_status = useLazyQuery(TABLO_STATUS, {}, { fetchPolicy: 'network-only
 let data = reactive([] as any[]);
 let num = 1;
 const lastTimeUpdated = ref<Date>();
-function onSort(field, order) {
+function onSort(field: string, order: string) {
   num = 1;
 }
 async function updateTable() {
@@ -35,7 +35,7 @@ async function updateTable() {
   data.sort((a, b) => a.id - b.id);
   lastTimeUpdated.value = new Date();
 }
-function blackColorClass(row, column) {
+function blackColorClass(row: any, column: any) {
   return { style: { color: 'black' } };
 }
 </script>

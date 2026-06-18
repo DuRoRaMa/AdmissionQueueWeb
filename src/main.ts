@@ -19,7 +19,7 @@ const app = createApp({
 });
 const pinia = createPinia();
 
-app.use(Buefy, {});
+app.use(Buefy as any, {})
 app.use(pinia);
 app.use(router);
 app.use(auth);

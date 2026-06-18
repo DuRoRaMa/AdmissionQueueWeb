@@ -85,7 +85,7 @@ function submitRedirect() {
             comment: comment.value
         };
 
-  postAPIData(
+    postAPIData(
     '/queue/operator/talon/action',
     payload,
     props.auth,
@@ -100,11 +100,13 @@ function submitRedirect() {
       emit('redirected');
       emit('close');
     },
-    (error) => {
+    (error: any) => {
       loading.value = false;
 
+      const detail = error?.response?.data?.detail;
+
       $buefy?.toast.open({
-        message: error?.response?.data?.detail || error,
+        message: detail || String(error),
         type: 'is-danger'
       });
     },

@@ -20,7 +20,7 @@ const chartOptions = {
   xaxis: {
     type: 'datetime',
     labels: {
-      formatter: (value, timestamp) => {
+      formatter: (value: string, timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('ru-ru', { formatMatcher: 'best fit' });
       }
     }

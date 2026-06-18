@@ -25,7 +25,7 @@ function login() {
     .then(() => {
       loadingLogin.value = false
       auth.fetch().then(() => {
-        new NotificationProgrammatic().open({
+        NotificationProgrammatic.open({
           message: `Добро пожаловать, ${auth.user<User>()?.username}`,
           duration: 5000,
           type: 'is-primary',

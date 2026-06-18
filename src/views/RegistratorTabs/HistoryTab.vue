@@ -2,11 +2,11 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useLazyQuery } from '@vue/apollo-composable';
 import { TALONS, type HistoryTalon } from '@/queries/historyTalons';
-import { log } from 'console';
+
 
 const perPage = 30;
 const paginataion = reactive({ offset: 0, limit: perPage });
-const order = reactive({});
+const order = reactive<Record<string, string | null>>({});
 const history_talons = useLazyQuery(
   TALONS,
   { pagination: paginataion, order: order },
@@ -15,7 +15,7 @@ const history_talons = useLazyQuery(
 const total = ref(0);
 const loading = ref(false);
 let data = reactive([] as HistoryTalon[]);
-const orderings = {
+const orderings: Record<string, string> = {
   asc: 'ASC',
   desc: 'DESC'
 };
@@ -42,18 +42,21 @@ async function updateTable() {
   total.value = res.countHistoryTalons;
   let ndata = [];
   for (const talon of res.historyTalons as HistoryTalon[]) {
+    const logs = talon.logs || [];
+    const lastLog = logs[logs.length - 1];
+
     ndata.push({
       id: talon.id,
       name: talon.name,
       createdAt: talon.createdAt,
-      status: talon.logs.at(-1).action,
-      user: talon.logs.at(-1).createdBy.username
+      status: lastLog?.action || '-',
+      user: lastLog?.createdBy?.username || '-'
     });
   }
   Object.assign(data, ndata);
   loading.value = false;
 }
-function blackColorClass(row, column) {
+function blackColorClass(row: any, column: any) {
   if (column.field === 'status') {
     if (row.status === 'Cancelled') {
       return { style: { color: 'red' } };

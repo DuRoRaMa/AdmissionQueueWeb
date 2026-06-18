@@ -3,6 +3,16 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
 
+function getCookie(name: string): string {
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || ''
+  }
+
+  return ''
+}
 // HTTP connection to the API
 const httpLink = createHttpLink({
   // You should use an absolute URL here

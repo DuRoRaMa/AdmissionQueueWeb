@@ -4,25 +4,18 @@ import { useAuth } from 'vue-auth3';
 import VueApexCharts from 'vue3-apexcharts';
 
 import { getAPIData } from '@/axios';
-import type {   
-    OperatorDetailedStatsResponse,
+import type {
+  OperatorDetailedStatsResponse,
   QueueStatsByOperator,
   QueueStatsFilterOptions,
-  QueueStatsResponse } from '@/types/index';
+  QueueStatsResponse
+} from '@/types/index';
 
 const auth = useAuth();
-const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy;
-function resetFilters() {
-  filters.purpose = null;
-  filters.operator = null;
-  filters.status = null;
-
-  loadStatistics();
-}
+const $buefy = getCurrentInstance()?.appContext.config.globalProperties.$buefy as any;
 
 const loading = ref(false);
 const filtersLoading = ref(false);
-
 
 const filterOptions = reactive<QueueStatsFilterOptions>({
   purposes: [],
@@ -91,34 +84,49 @@ const stats = reactive<QueueStatsResponse>({
   status_labels: {}
 });
 
-function toApiDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+function resetFilters() {
+  filters.purpose = null;
+  filters.operator = null;
+  filters.status = null;
 
-  return `${year}-${day}-${month}`
+  loadStatistics();
 }
+
+/**
+ * Российский формат даты: ДД.ММ.ГГГГ
+ */
+function toApiDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return `${day}.${month}.${year}`;
+}
+
 function loadFilterOptions() {
   filtersLoading.value = true;
 
   getAPIData(
     '/queue/stats/filters/',
     auth,
-    (response) => {
+    (response: any) => {
       Object.assign(filterOptions, response.data);
       filtersLoading.value = false;
     },
-    (error) => {
+    (error: any) => {
       filtersLoading.value = false;
 
+      const detail = error?.response?.data?.detail || error?.message;
+
       $buefy?.toast.open({
-        message: `Не удалось загрузить фильтры: ${error.message}`,
+        message: `Не удалось загрузить фильтры: ${detail || String(error)}`,
         type: 'is-danger'
       });
     }
   );
 }
-function formatDuration(seconds: number): string {
+
+function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '0 мин';
 
   const minutes = Math.round(seconds / 60);
@@ -132,7 +140,8 @@ function formatDuration(seconds: number): string {
 
   return `${hours} ч ${restMinutes} мин`;
 }
-function formatDateTime(value: string | null): string {
+
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
 
   const date = new Date(value);
@@ -146,7 +155,7 @@ function formatDateTime(value: string | null): string {
   });
 }
 
-function formatNullableDuration(seconds: number | null): string {
+function formatNullableDuration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) {
     return '—';
   }
@@ -154,7 +163,7 @@ function formatNullableDuration(seconds: number | null): string {
   return formatDuration(seconds);
 }
 
-function numberValue(value: number | undefined): string {
+function numberValue(value: number | null | undefined): string {
   return String(value ?? 0);
 }
 
@@ -166,15 +175,17 @@ function loadStatistics() {
   getAPIData(
     '/queue/stats/extended/',
     auth,
-    (response) => {
+    (response: any) => {
       Object.assign(stats, response.data);
       loading.value = false;
     },
-    (error) => {
+    (error: any) => {
       loading.value = false;
 
+      const detail = error?.response?.data?.detail || error?.message;
+
       $buefy?.toast.open({
-        message: `Не удалось загрузить статистику: ${error.message}`,
+        message: `Не удалось загрузить статистику: ${detail || String(error)}`,
         type: 'is-danger'
       });
     },
@@ -198,15 +209,17 @@ function loadOperatorDetails(operator: QueueStatsByOperator) {
   getAPIData(
     `/queue/stats/operators/${operator.id}/`,
     auth,
-    (response) => {
+    (response: any) => {
       Object.assign(operatorDetails, response.data);
       operatorLoading.value = false;
     },
-    (error) => {
+    (error: any) => {
       operatorLoading.value = false;
 
+      const detail = error?.response?.data?.detail || error?.message;
+
       $buefy?.toast.open({
-        message: `Не удалось загрузить статистику оператора: ${error.message}`,
+        message: `Не удалось загрузить статистику оператора: ${detail || String(error)}`,
         type: 'is-danger'
       });
     },
@@ -334,9 +347,7 @@ const purposeChartOptions = computed(() => ({
   }
 }));
 
-const purposeChartSeries = computed(() =>
-  stats.by_purpose.map((item) => item.total)
-);
+const purposeChartSeries = computed(() => stats.by_purpose.map((item) => item.total));
 
 onMounted(() => {
   loadFilterOptions();
@@ -360,92 +371,96 @@ onMounted(() => {
     </div>
 
     <div class="box filters-box">
-        <div class="filters-grid">
-            <b-field label="Период">
-            <b-datepicker
-                v-model="dates"
-                placeholder="Выберите период"
-                range
-            />
-            </b-field>
+      <div class="filters-grid">
+        <b-field label="Период">
+          <b-datepicker
+            v-model="dates"
+            placeholder="Выберите период"
+            range
+          />
+        </b-field>
 
-            <b-field label="Направление">
-            <b-select
-                v-model="filters.purpose"
-                placeholder="Все направления"
-                expanded
-                :loading="filtersLoading"
+        <b-field label="Направление">
+          <b-select
+            v-model="filters.purpose"
+            placeholder="Все направления"
+            expanded
+            :loading="filtersLoading"
+          >
+            <option :value="null">Все направления</option>
+
+            <option
+              v-for="purpose in filterOptions.purposes"
+              :key="purpose.id"
+              :value="purpose.id"
             >
-                <option :value="null">Все направления</option>
+              {{ purpose.name }}
+            </option>
+          </b-select>
+        </b-field>
 
-                <option
-                v-for="purpose in filterOptions.purposes"
-                :key="purpose.id"
-                :value="purpose.id"
-                >
-                {{ purpose.name }}
-                </option>
-            </b-select>
-            </b-field>
+        <b-field label="Оператор">
+          <b-select
+            v-model="filters.operator"
+            placeholder="Все операторы"
+            expanded
+            :loading="filtersLoading"
+          >
+            <option :value="null">Все операторы</option>
 
-            <b-field label="Оператор">
-            <b-select
-                v-model="filters.operator"
-                placeholder="Все операторы"
-                expanded
-                :loading="filtersLoading"
+            <option
+              v-for="operator in filterOptions.operators"
+              :key="operator.id"
+              :value="operator.id"
             >
-                <option :value="null">Все операторы</option>
+              {{ operator.full_name || operator.username }}
+            </option>
+          </b-select>
+        </b-field>
 
-                <option
-                v-for="operator in filterOptions.operators"
-                :key="operator.id"
-                :value="operator.id"
-                >
-                {{ operator.full_name || operator.username }}
-                </option>
-            </b-select>
-            </b-field>
+        <b-field label="Статус">
+          <b-select
+            v-model="filters.status"
+            placeholder="Все статусы"
+            expanded
+            :loading="filtersLoading"
+          >
+            <option :value="null">Все статусы</option>
 
-            <b-field label="Статус">
-            <b-select
-                v-model="filters.status"
-                placeholder="Все статусы"
-                expanded
-                :loading="filtersLoading"
+            <option
+              v-for="(label, value) in filterOptions.statuses"
+              :key="value"
+              :value="value"
             >
-                <option :value="null">Все статусы</option>
+              {{ label }}
+            </option>
+          </b-select>
+        </b-field>
+      </div>
 
-                <option
-                v-for="(label, value) in filterOptions.statuses"
-                :key="value"
-                :value="value"
-                >
-                {{ label }}
-                </option>
-            </b-select>
-            </b-field>
-        </div>
+      <div class="filters-actions">
+        <b-button
+          type="is-primary"
+          :loading="loading"
+          @click="loadStatistics"
+        >
+          Применить
+        </b-button>
 
-        <div class="filters-actions">
-            <b-button
-            type="is-primary"
-            :loading="loading"
-            @click="loadStatistics"
-            >
-            Применить
-            </b-button>
-
-            <b-button @click="resetFilters">
-            Сбросить
-            </b-button>
-        </div>
-        </div>
+        <b-button @click="resetFilters">
+          Сбросить
+        </b-button>
+      </div>
+    </div>
 
     <b-loading :is-full-page="false" v-model="loading" />
 
     <div class="summary-grid">
-      <div v-for="card in summaryCards" :key="card.title" class="summary-card box">
+      <div
+        v-for="card in summaryCards"
+        :key="card.title"
+        class="summary-card box"
+      >
         <p class="summary-card__title">{{ card.title }}</p>
         <p class="summary-card__value">{{ card.value }}</p>
         <p class="summary-card__subtitle">{{ card.subtitle }}</p>
@@ -512,14 +527,14 @@ onMounted(() => {
               <td>{{ formatDuration(operator.avg_service_seconds) }}</td>
               <td class="has-text-right">
                 <b-button
-                    size="is-small"
-                    type="is-primary"
-                    outlined
-                    @click="loadOperatorDetails(operator)"
+                  size="is-small"
+                  type="is-primary"
+                  outlined
+                  @click="loadOperatorDetails(operator)"
                 >
-                    Подробнее
+                  Подробнее
                 </b-button>
-                </td>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -549,163 +564,175 @@ onMounted(() => {
           <span>Отменено: {{ operator.cancelled }}</span>
           <span>Среднее: {{ formatDuration(operator.avg_service_seconds) }}</span>
         </div>
+
         <b-button
-            size="is-small"
-            type="is-primary"
-            outlined
-            expanded
-            @click="loadOperatorDetails(operator)"
+          size="is-small"
+          type="is-primary"
+          outlined
+          expanded
+          @click="loadOperatorDetails(operator)"
         >
-            Подробнее
+          Подробнее
         </b-button>
       </article>
     </div>
+
     <b-modal
-  v-model="operatorModalActive"
-  has-modal-card
-  trap-focus
-  :destroy-on-hide="false"
->
-  <div class="modal-card operator-details-modal">
-    <header class="modal-card-head">
-      <div>
-        <p class="modal-card-title">
-          Статистика оператора
-        </p>
-        <p class="operator-modal-subtitle">
-          {{ operatorDetails.operator?.full_name || operatorDetails.operator?.username || selectedOperator?.username }}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        class="delete"
-        aria-label="close"
-        @click="operatorModalActive = false"
-      />
-    </header>
-
-    <section class="modal-card-body">
-      <b-loading :is-full-page="false" v-model="operatorLoading" />
-
-      <div class="operator-summary-grid">
-        <div class="operator-summary-card">
-          <span>Всего талонов</span>
-          <strong>{{ operatorDetails.summary.total }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Назначено</span>
-          <strong>{{ operatorDetails.summary.assigned }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Начато</span>
-          <strong>{{ operatorDetails.summary.started }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Завершено</span>
-          <strong>{{ operatorDetails.summary.completed }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Отменено</span>
-          <strong>{{ operatorDetails.summary.cancelled }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Среднее ожидание</span>
-          <strong>{{ formatDuration(operatorDetails.summary.avg_wait_seconds) }}</strong>
-        </div>
-
-        <div class="operator-summary-card">
-          <span>Среднее обслуживание</span>
-          <strong>{{ formatDuration(operatorDetails.summary.avg_service_seconds) }}</strong>
-        </div>
-      </div>
-
-      <h3 class="title is-5 operator-talons-title">
-        Талоны оператора
-      </h3>
-
-      <div v-if="!operatorDetails.talons.length && !operatorLoading" class="empty-state">
-        По выбранному периоду нет талонов.
-      </div>
-
-      <div v-else class="operator-talons-list">
-        <article
-          v-for="talon in operatorDetails.talons"
-          :key="talon.id"
-          class="operator-talon-card"
-        >
-          <div class="operator-talon-card__header">
-            <div>
-              <strong>{{ talon.name }}</strong>
-              <p>{{ talon.purpose.name }}</p>
-            </div>
-
-            <span class="tag is-light">
-              {{ talon.status_label }}
-            </span>
+      v-model="operatorModalActive"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="false"
+    >
+      <div class="modal-card operator-details-modal">
+        <header class="modal-card-head">
+          <div>
+            <p class="modal-card-title">
+              Статистика оператора
+            </p>
+            <p class="operator-modal-subtitle">
+              {{
+                operatorDetails.operator?.full_name ||
+                operatorDetails.operator?.username ||
+                selectedOperator?.username
+              }}
+            </p>
           </div>
 
-          <div class="operator-talon-card__grid">
-            <div>
-              <span>Создан</span>
-              <strong>{{ formatDateTime(talon.created_at) }}</strong>
+          <button
+            type="button"
+            class="delete"
+            aria-label="close"
+            @click="operatorModalActive = false"
+          />
+        </header>
+
+        <section class="modal-card-body">
+          <b-loading :is-full-page="false" v-model="operatorLoading" />
+
+          <div class="operator-summary-grid">
+            <div class="operator-summary-card">
+              <span>Всего талонов</span>
+              <strong>{{ operatorDetails.summary.total }}</strong>
             </div>
 
-            <div>
-              <span>Назначен</span>
-              <strong>{{ formatDateTime(talon.assigned_at) }}</strong>
+            <div class="operator-summary-card">
+              <span>Назначено</span>
+              <strong>{{ operatorDetails.summary.assigned }}</strong>
             </div>
 
-            <div>
-              <span>Начат</span>
-              <strong>{{ formatDateTime(talon.started_at) }}</strong>
+            <div class="operator-summary-card">
+              <span>Начато</span>
+              <strong>{{ operatorDetails.summary.started }}</strong>
             </div>
 
-            <div>
-              <span>Завершён</span>
-              <strong>{{ formatDateTime(talon.completed_at) }}</strong>
+            <div class="operator-summary-card">
+              <span>Завершено</span>
+              <strong>{{ operatorDetails.summary.completed }}</strong>
             </div>
 
-            <div>
-              <span>Ожидание</span>
-              <strong>{{ formatNullableDuration(talon.wait_seconds) }}</strong>
+            <div class="operator-summary-card">
+              <span>Отменено</span>
+              <strong>{{ operatorDetails.summary.cancelled }}</strong>
             </div>
 
-            <div>
-              <span>Обслуживание</span>
-              <strong>{{ formatNullableDuration(talon.service_seconds) }}</strong>
+            <div class="operator-summary-card">
+              <span>Среднее ожидание</span>
+              <strong>{{ formatDuration(operatorDetails.summary.avg_wait_seconds) }}</strong>
+            </div>
+
+            <div class="operator-summary-card">
+              <span>Среднее обслуживание</span>
+              <strong>{{ formatDuration(operatorDetails.summary.avg_service_seconds) }}</strong>
             </div>
           </div>
 
-          <details v-if="talon.operator_logs.length" class="operator-talon-logs">
-            <summary>Журнал действий оператора</summary>
+          <h3 class="title is-5 operator-talons-title">
+            Талоны оператора
+          </h3>
 
-            <div
-              v-for="log in talon.operator_logs"
-              :key="log.id"
-              class="operator-log-row"
+          <div
+            v-if="!operatorDetails.talons.length && !operatorLoading"
+            class="empty-state"
+          >
+            По выбранному периоду нет талонов.
+          </div>
+
+          <div v-else class="operator-talons-list">
+            <article
+              v-for="talon in operatorDetails.talons"
+              :key="talon.id"
+              class="operator-talon-card"
             >
-              <span>{{ formatDateTime(log.created_at) }}</span>
-              <strong>{{ log.action_label }}</strong>
-              <small v-if="log.comment">{{ log.comment }}</small>
-            </div>
-          </details>
-        </article>
-      </div>
-    </section>
+              <div class="operator-talon-card__header">
+                <div>
+                  <strong>{{ talon.name }}</strong>
+                  <p>{{ talon.purpose?.name || 'Без направления' }}</p>
+                </div>
 
-    <footer class="modal-card-foot">
-      <b-button @click="operatorModalActive = false">
-        Закрыть
-      </b-button>
-    </footer>
-  </div>
-</b-modal>
+                <span class="tag is-light">
+                  {{ talon.status_label }}
+                </span>
+              </div>
+
+              <div class="operator-talon-card__grid">
+                <div>
+                  <span>Создан</span>
+                  <strong>{{ formatDateTime(talon.created_at) }}</strong>
+                </div>
+
+                <div>
+                  <span>Назначен</span>
+                  <strong>{{ formatDateTime(talon.assigned_at) }}</strong>
+                </div>
+
+                <div>
+                  <span>Начат</span>
+                  <strong>{{ formatDateTime(talon.started_at) }}</strong>
+                </div>
+
+                <div>
+                  <span>Завершён</span>
+                  <strong>{{ formatDateTime(talon.completed_at) }}</strong>
+                </div>
+
+                <div>
+                  <span>Ожидание</span>
+                  <strong>{{ formatNullableDuration(talon.wait_seconds) }}</strong>
+                </div>
+
+                <div>
+                  <span>Обслуживание</span>
+                  <strong>{{ formatNullableDuration(talon.service_seconds) }}</strong>
+                </div>
+              </div>
+
+              <details
+                v-if="talon.operator_logs?.length"
+                class="operator-talon-logs"
+              >
+                <summary>Журнал действий оператора</summary>
+
+                <div
+                  v-for="log in talon.operator_logs"
+                  :key="log.id"
+                  class="operator-log-row"
+                >
+                  <span>{{ formatDateTime(log.created_at) }}</span>
+                  <strong>{{ log.action_label }}</strong>
+                  <small v-if="log.comment">{{ log.comment }}</small>
+                </div>
+              </details>
+            </article>
+          </div>
+        </section>
+
+        <footer class="modal-card-foot">
+          <b-button @click="operatorModalActive = false">
+            Закрыть
+          </b-button>
+        </footer>
+      </div>
+    </b-modal>
   </section>
 </template>
 
@@ -859,6 +886,7 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
 .operator-details-modal {
   width: min(1100px, calc(100vw - 32px));
 }
@@ -995,6 +1023,7 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(180px, 1fr));
