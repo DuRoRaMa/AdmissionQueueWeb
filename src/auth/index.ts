@@ -10,13 +10,27 @@ const axiosDriver = defineHttpDriver({
 
 const authDriver = defineAuthDriver({
   request(auth: any, options: any, token: any) {
-    options.headers['Authorization'] = 'Bearer ' + token;
+    if (!options.headers) {
+      options.headers = {};
+    }
+
+    if (token) {
+      options.headers.Authorization = `Bearer ${token}`;
+    }
+
+    delete options.headers['X-CSRFToken'];
+    delete options.headers['X-Csrftoken'];
+    delete options.headers['x-csrftoken'];
+    delete options.headers['X-Requested-With'];
+    delete options.headers['x-requested-with'];
+    delete options.headers['X-Ajax-Token'];
+    delete options.headers['x-ajax-token'];
 
     return options;
   },
 
   response(auth: any, res: any) {
-    const token = res.data.auth_token;
+    const token = res.data?.auth_token;
 
     if (token) {
       const i = token.split(/Bearer:?\s?/i);
@@ -27,10 +41,17 @@ const authDriver = defineAuthDriver({
     return null;
   }
 });
+
 const auth = createAuth({
   rolesKey: 'groups',
   tokenDefaultKey: 'auth_token',
+
   forbiddenRedirect: '/403',
+
+  csrfData: {
+    enabled: false
+  },
+
   loginData: {
     url: '/auth/token/login',
     method: 'POST',
@@ -39,22 +60,27 @@ const auth = createAuth({
     staySignedIn: true,
     remember: true
   },
+
   logoutData: {
     url: '/auth/token/logout',
     method: 'POST',
     redirect: '/',
     makeRequest: true
   },
+
   refreshToken: {
     enabled: false
   },
+
   fetchData: {
     url: 'account/user/',
     method: 'GET'
   },
+
   plugins: {
     router
   },
+
   drivers: {
     auth: authDriver,
     http: axiosDriver

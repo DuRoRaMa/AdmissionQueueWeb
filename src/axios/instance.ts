@@ -6,6 +6,20 @@ const APIAxios = axios.create({
   withCredentials: false
 });
 
+APIAxios.interceptors.request.use((config) => {
+  if (config.headers) {
+    delete config.headers['X-CSRFToken'];
+    delete config.headers['X-Csrftoken'];
+    delete config.headers['x-csrftoken'];
+    delete config.headers['X-Requested-With'];
+    delete config.headers['x-requested-with'];
+    delete config.headers['X-Ajax-Token'];
+    delete config.headers['x-ajax-token'];
+  }
+
+  return config;
+});
+
 APIAxios.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
