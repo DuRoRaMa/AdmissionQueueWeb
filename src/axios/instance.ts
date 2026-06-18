@@ -6,16 +6,24 @@ const APIAxios = axios.create({
   withCredentials: false
 });
 
-APIAxios.interceptors.request.use((config) => {
-  if (config.headers) {
-    delete config.headers['X-CSRFToken'];
-    delete config.headers['X-Csrftoken'];
-    delete config.headers['x-csrftoken'];
-    delete config.headers['X-Requested-With'];
-    delete config.headers['x-requested-with'];
-    delete config.headers['X-Ajax-Token'];
-    delete config.headers['x-ajax-token'];
+function removeHeader(headers: any, name: string) {
+  if (!headers) return;
+
+  if (typeof headers.delete === 'function') {
+    headers.delete(name);
   }
+
+  delete headers[name];
+}
+
+APIAxios.interceptors.request.use((config) => {
+  removeHeader(config.headers, 'X-CSRFToken');
+  removeHeader(config.headers, 'X-Csrftoken');
+  removeHeader(config.headers, 'x-csrftoken');
+  removeHeader(config.headers, 'X-Requested-With');
+  removeHeader(config.headers, 'x-requested-with');
+  removeHeader(config.headers, 'X-Ajax-Token');
+  removeHeader(config.headers, 'x-ajax-token');
 
   return config;
 });

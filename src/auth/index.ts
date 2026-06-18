@@ -48,10 +48,6 @@ const auth = createAuth({
 
   forbiddenRedirect: '/403',
 
-  csrfData: {
-    enabled: false
-  },
-
   loginData: {
     url: '/auth/token/login',
     method: 'POST',
