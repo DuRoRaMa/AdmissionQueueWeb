@@ -11,7 +11,6 @@ import { useSubscription } from '@vue/apollo-composable';
 import InProgressRaw from '@/components/TabloPage/InProgressRaw.vue';
 import HeaderPanel from '@/components/TabloPage/HeaderPanel.vue';
 import {
-  type talonLogs,
   TALON_LOG_SUB
 } from '@/queries/talonLogSub';
 
@@ -28,12 +27,16 @@ interface PublicTalon {
   name: string;
   action: string;
   purpose: string;
+  last_log_id?: number | null;
+  last_log_action?: string | null;
+  last_log_comment?: string | null;
+  last_log_created_at?: string | null;
 }
 
 interface PublicLocation {
   id: number;
   name: string;
-  is_operator_assigned: boolean;
+  is_operator_assigned?: boolean;
   talon: PublicTalon | null;
 }
 
@@ -41,9 +44,10 @@ interface PublicQueueState {
   locations: PublicLocation[];
 }
 
+const CALL_COMMENT = 'Вызов талона оператором';
+
 const data = reactive({
-  talons: [] as Talon[],
-  lastTalonLogId: -1
+  talons: [] as Talon[]
 });
 
 const data_for_show = reactive(
@@ -65,6 +69,9 @@ const isStateLoading = ref(false);
 let queueForNotification: Talon[] = [];
 let stateRefreshInterval: number | null = null;
 let notificationInterval: number | null = null;
+let hideNotificationTimer: number | null = null;
+
+const processedNotificationLogIds = new Set<number>();
 
 const { result } = useSubscription(
   TALON_LOG_SUB,
@@ -79,6 +86,62 @@ const checkScreenSize = () => {
     window.innerWidth <= 1260 &&
     window.innerHeight <= 260;
 };
+
+function getNumber(value: unknown): number | null {
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function isCallEvent(talon: PublicTalon): boolean {
+  if (talon.last_log_action === 'Started') {
+    return true;
+  }
+
+  return (
+    talon.last_log_action === 'Assigned' &&
+    talon.last_log_comment === CALL_COMMENT
+  );
+}
+
+function enqueueNotificationsFromState(
+  locations: PublicLocation[],
+  shouldEnqueue: boolean
+): void {
+  for (const location of locations) {
+    const talon = location.talon;
+
+    if (!talon) {
+      continue;
+    }
+
+    const logId = getNumber(talon.last_log_id);
+
+    if (logId === null) {
+      continue;
+    }
+
+    if (processedNotificationLogIds.has(logId)) {
+      continue;
+    }
+
+    processedNotificationLogIds.add(logId);
+
+    if (!shouldEnqueue) {
+      continue;
+    }
+
+    if (!isCallEvent(talon)) {
+      continue;
+    }
+
+    queueForNotification.push({
+      id: talon.id,
+      name: talon.name,
+      location: location.name
+    });
+  }
+}
 
 function rebuildRows(
   locations: PublicLocation[]
@@ -104,13 +167,30 @@ function rebuildRows(
     });
   }
 
-  data_for_show.sort(
-    (a, b) =>
-      Number(a.location) - Number(b.location)
-  );
+  data_for_show.sort((a, b) => {
+    const locationA = Number(a.location);
+    const locationB = Number(b.location);
+
+    if (
+      Number.isFinite(locationA) &&
+      Number.isFinite(locationB)
+    ) {
+      return locationA - locationB;
+    }
+
+    return a.location.localeCompare(
+      b.location,
+      'ru',
+      {
+        numeric: true
+      }
+    );
+  });
 }
 
-async function fetchQueueState(): Promise<void> {
+async function fetchQueueState(
+  shouldEnqueueNotifications = true
+): Promise<void> {
   if (isStateLoading.value) {
     return;
   }
@@ -134,7 +214,13 @@ async function fetchQueueState(): Promise<void> {
     const responseData =
       (await response.json()) as PublicQueueState;
 
-    rebuildRows(responseData.locations ?? []);
+    const locations = responseData.locations ?? [];
+
+    rebuildRows(locations);
+    enqueueNotificationsFromState(
+      locations,
+      shouldEnqueueNotifications
+    );
   } catch (error) {
     console.error(
       'Ошибка обновления состояния табло:',
@@ -163,8 +249,7 @@ function showNotification(): void {
     mode: 'no-cors',
     headers: {
       'Content-Type': 'application/json',
-      Accept: '*/*',
-      'Access-Control-Allow-Origin': '*'
+      Accept: '*/*'
     }
   }).catch((error) => {
     console.error(
@@ -173,8 +258,13 @@ function showNotification(): void {
     );
   });
 
-  window.setTimeout(() => {
+  if (hideNotificationTimer !== null) {
+    window.clearTimeout(hideNotificationTimer);
+  }
+
+  hideNotificationTimer = window.setTimeout(() => {
     currentNotification.show = false;
+    hideNotificationTimer = null;
   }, 10000);
 }
 
@@ -185,46 +275,12 @@ watch(
       return;
     }
 
-    const log: talonLogs =
-      subscriptionResult.talonLogs;
-
-    const logId = Number(log.id);
-
-    if (
-      Number.isFinite(logId) &&
-      logId <= data.lastTalonLogId
-    ) {
-      return;
-    }
-
-    if (Number.isFinite(logId)) {
-      data.lastTalonLogId = logId;
-    }
-
     /*
-     * GraphQL больше не является источником
-     * состояния табло. После любого события
-     * перечитываем готовое состояние REST.
+     * GraphQL используем только как быстрый триггер.
+     * Само состояние и событие вызова берём из REST,
+     * потому что там есть стол оператора и last_log_id.
      */
-    await fetchQueueState();
-
-    /*
-     * Голосовое уведомление создаём только
-     * для назначения талона оператору.
-     */
-    if (log.action === 'Assigned') {
-      const location =
-        log.createdBy?.operatorSettings
-          ?.location?.name;
-
-      if (location) {
-        queueForNotification.push({
-          id: Number(log.talon.id),
-          name: log.talon.name,
-          location
-        });
-      }
-    }
+    await fetchQueueState(true);
   },
   {
     immediate: false
@@ -232,11 +288,18 @@ watch(
 );
 
 onMounted(async () => {
-  await fetchQueueState();
+  /*
+   * Первый запрос только синхронизирует текущее состояние.
+   * Старые last_log_id помечаем обработанными, чтобы при
+   * открытии/обновлении страницы табло не озвучивало старый вызов.
+   */
+  await fetchQueueState(false);
 
   stateRefreshInterval = window.setInterval(
-    fetchQueueState,
-    15000
+    () => {
+      fetchQueueState(true);
+    },
+    2000
   );
 
   notificationInterval = window.setInterval(
@@ -265,6 +328,12 @@ onUnmounted(() => {
   if (notificationInterval !== null) {
     window.clearInterval(
       notificationInterval
+    );
+  }
+
+  if (hideNotificationTimer !== null) {
+    window.clearTimeout(
+      hideNotificationTimer
     );
   }
 

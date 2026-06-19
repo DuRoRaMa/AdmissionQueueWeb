@@ -7,6 +7,16 @@ import { TALONS, type HistoryTalon } from '@/queries/historyTalons';
 const perPage = 30;
 const paginataion = reactive({ offset: 0, limit: perPage });
 const order = reactive<Record<string, string | null>>({});
+function getLastLog(logs: any[] = []) {
+  if (!logs.length) return null;
+
+  return [...logs].sort((a, b) => {
+    const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+    const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+
+    return dateB - dateA;
+  })[0];
+}
 const history_talons = useLazyQuery(
   TALONS,
   { pagination: paginataion, order: order },
@@ -43,7 +53,7 @@ async function updateTable() {
   let ndata = [];
   for (const talon of res.historyTalons as HistoryTalon[]) {
     const logs = talon.logs || [];
-    const lastLog = logs[logs.length - 1];
+    const lastLog = getLastLog(talon.logs || []);
 
     ndata.push({
       id: talon.id,
