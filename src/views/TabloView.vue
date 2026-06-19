@@ -27,10 +27,8 @@ interface PublicTalon {
   name: string;
   action: string;
   purpose: string;
-  last_log_id?: number | null;
-  last_log_action?: string | null;
-  last_log_comment?: string | null;
-  last_log_created_at?: string | null;
+  last_assigned_log_id?: number | null;
+  last_assigned_log_created_at?: string | null;
 }
 
 interface PublicLocation {
@@ -43,8 +41,6 @@ interface PublicLocation {
 interface PublicQueueState {
   locations: PublicLocation[];
 }
-
-const CALL_COMMENT = 'Вызов талона оператором';
 
 const data = reactive({
   talons: [] as Talon[]
@@ -94,14 +90,7 @@ function getNumber(value: unknown): number | null {
 }
 
 function isCallEvent(talon: PublicTalon): boolean {
-  if (talon.last_log_action === 'Started') {
-    return true;
-  }
-
-  return (
-    talon.last_log_action === 'Assigned' &&
-    talon.last_log_comment === CALL_COMMENT
-  );
+  return getNumber(talon.last_assigned_log_id) !== null;
 }
 
 function enqueueNotificationsFromState(
@@ -115,7 +104,9 @@ function enqueueNotificationsFromState(
       continue;
     }
 
-    const logId = getNumber(talon.last_log_id);
+    const logId = getNumber(
+      talon.last_assigned_log_id
+    );
 
     if (logId === null) {
       continue;
@@ -128,10 +119,6 @@ function enqueueNotificationsFromState(
     processedNotificationLogIds.add(logId);
 
     if (!shouldEnqueue) {
-      continue;
-    }
-
-    if (!isCallEvent(talon)) {
       continue;
     }
 
