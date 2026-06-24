@@ -3,6 +3,7 @@ import { getAPIData } from '@/axios';
 import OperatorPanelView from './OperatorTabs/PanelTab.vue';
 import OperatorSettingsView from './OperatorTabs/SettingsTab.vue';
 import OperatorStatsView from './OperatorTabs/StatsTab.vue';
+import MaxLinkTab from './OperatorTabs/MaxLinkTab.vue';
 import { ref, h, watch, getCurrentInstance } from 'vue';
 import type { OperatorSettings } from '@/types';
 import { useAuth } from 'vue-auth3';
@@ -26,6 +27,12 @@ const baseTabs = [
     label: 'Настройки',
     icon: 'cog',
     component: OperatorSettingsView
+  },
+  {
+    id: 'MaxLink',
+    label: 'MAX',
+    icon: 'link',
+    component: MaxLinkTab
   }
 ];
 const auth = useAuth();
